@@ -1,4 +1,4 @@
-// episodes.js
+// episodes.js - com pré-carregamento automático (prefetch)
 document.addEventListener('DOMContentLoaded', function() {
 	const sidebar = document.getElementById('episodes-sidebar');
 	const openBtn = document.getElementById('episodes-button');
@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', function() {
 	const seriesId = openBtn.getAttribute('data-series-id');
 	const closeBtn = document.getElementById('close-sidebar');
 	const contentDiv = document.getElementById('episodes-content');
-	let loaded = false;
+	
+	let loaded = false;          // já renderizou alguma vez?
+	let prefetchedData = null;   // dados pré-carregados
+	let prefetchPromise = null;   // promise do prefetch
 	let fixedProgressDiv = null;
 
 	// ========== Funções para episódios assistidos ==========
@@ -45,25 +48,50 @@ document.addEventListener('DOMContentLoaded', function() {
 	}
 	// =====================================================
 
-	// Abre o episódio no Stremio
 	function openEpisodeInStremio(season, episode) {
 		const url = `stremio:///detail/series/${seriesId}?season=${season}&episode=${episode}`;
 		window.location.href = url;
 	}
 
+	// ========== PREFETCH: carrega episódios em background ==========
+	function prefetchEpisodes() {
+		if (prefetchPromise) return prefetchPromise; // já em andamento
+		prefetchPromise = fetch('/api/episodes/' + seriesId)
+			.then(response => {
+				if (!response.ok) throw new Error('HTTP ' + response.status);
+				return response.json();
+			})
+			.then(data => {
+				prefetchedData = data;
+				return data;
+			})
+			.catch(err => {
+				console.error('Prefetch de episódios falhou:', err);
+				prefetchedData = null;
+				throw err;
+			});
+		return prefetchPromise;
+	}
+
+	// Inicia o prefetch imediatamente (se for uma série)
+	prefetchEpisodes();
+
+	// ========== ABERTURA DA SIDEBAR ==========
 	openBtn.addEventListener('click', function() {
 		sidebar.classList.add('open');
+		
 		if (!loaded) {
+			// Mostra loading imediato (caso o prefetch ainda não tenha terminado)
 			contentDiv.innerHTML = '<div class="loading">' + translations.loading + '</div>';
-			fetch('/api/episodes/' + seriesId)
-				.then(response => response.json())
+			
+			// Usa os dados pré-carregados (ou aguarda o fetch)
+			(prefetchPromise || prefetchEpisodes())
 				.then(seasons => {
 					renderEpisodes(seasons);
 					loaded = true;
 				})
 				.catch(err => {
 					contentDiv.innerHTML = '<div class="error">' + translations.error + '</div>';
-					console.error(err);
 				});
 		}
 	});
@@ -75,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 	});
 
+	// ========== FUNÇÃO OTIMIZADA COM DOCUMENT FRAGMENT ==========
 	function renderEpisodes(seasons) {
 		if (!seasons.length) {
 			contentDiv.innerHTML = '<p>' + translations.noEpisodes + '</p>';
@@ -91,31 +120,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
 		const isLogged = isUserLoggedIn();
 
-		// Cabeçalho com dropdown. A barra de progresso só é incluída se o usuário estiver logado
-		const progressHtml = isLogged ? '<div id="fixed-progress" class="season-progress-fixed"></div>' : '';
-		const headerHtml = `
-			<div class="episodes-fixed-header">
-				<select id="season-select" class="season-select">
-					${seasons.map((season, idx) => {
-						const label = season.season === 0 ? translations.special : translations.season + ' ' + season.season;
-						const selected = (idx === defaultSeasonIndex) ? 'selected' : '';
-						return `<option value="${idx}" ${selected}>${label}</option>`;
-					}).join('')}
-				</select>
-				${progressHtml}
-			</div>
-			<div id="episodes-scrollable" class="episodes-scrollable"></div>
-		`;
-		contentDiv.innerHTML = headerHtml;
+		const fragment = document.createDocumentFragment();
+		const headerDiv = document.createElement('div');
+		headerDiv.className = 'episodes-fixed-header';
 
-		const selectEl = document.getElementById('season-select');
-		let currentSeasonIndex = defaultSeasonIndex;
+		const selectEl = document.createElement('select');
+		selectEl.id = 'season-select';
+		selectEl.className = 'season-select';
+		seasons.forEach((season, idx) => {
+			const option = document.createElement('option');
+			option.value = idx;
+			const label = season.season === 0 ? translations.special : translations.season + ' ' + season.season;
+			option.textContent = label;
+			if (idx === defaultSeasonIndex) option.selected = true;
+			selectEl.appendChild(option);
+		});
+		headerDiv.appendChild(selectEl);
 
 		if (isLogged) {
-			fixedProgressDiv = document.getElementById('fixed-progress');
+			const progressDiv = document.createElement('div');
+			progressDiv.id = 'fixed-progress';
+			progressDiv.className = 'season-progress-fixed';
+			headerDiv.appendChild(progressDiv);
+			fixedProgressDiv = progressDiv;
 		}
 
-		// Função para atualizar a barra de progresso fixa (só executa se logado)
+		fragment.appendChild(headerDiv);
+
+		const scrollableDiv = document.createElement('div');
+		scrollableDiv.id = 'episodes-scrollable';
+		scrollableDiv.className = 'episodes-scrollable';
+		fragment.appendChild(scrollableDiv);
+
+		contentDiv.innerHTML = '';
+		contentDiv.appendChild(fragment);
+
+		const selectElement = document.getElementById('season-select');
+		let currentSeasonIndex = defaultSeasonIndex;
+
 		function updateFixedProgress(seasonIndex) {
 			if (!isLogged) return;
 			const season = seasons[seasonIndex];
@@ -126,12 +168,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			const percent = total === 0 ? 0 : (watchedCount / total) * 100;
 			const progressText = `${watchedCount}/${total} ${translations.watchedEpisodes}`;
 
-			fixedProgressDiv.innerHTML = `
-				<div class="season-progress-text">${progressText}</div>
-				<div class="progress-bar-bg">
-					<div class="progress-bar-fill" style="width: ${percent}%;"></div>
-				</div>
-			`;
+			if (fixedProgressDiv) {
+				fixedProgressDiv.innerHTML = `
+					<div class="season-progress-text">${progressText}</div>
+					<div class="progress-bar-bg">
+						<div class="progress-bar-fill" style="width: ${percent}%;"></div>
+					</div>
+				`;
+			}
 		}
 
 		function renderEpisodesForSeason(seasonIndex) {
@@ -145,10 +189,13 @@ document.addEventListener('DOMContentLoaded', function() {
 				return;
 			}
 
-			const isLogged = isUserLoggedIn();
-			const watchedEpisodes = isLogged ? getWatchedEpisodes() : [];
+			const isLoggedLocal = isUserLoggedIn();
+			const watchedEpisodes = isLoggedLocal ? getWatchedEpisodes() : [];
 
-			let episodesHtml = '<ul class="episode-list">';
+			const episodesFragment = document.createDocumentFragment();
+			const ul = document.createElement('ul');
+			ul.className = 'episode-list';
+
 			season.episodes.forEach(ep => {
 				const releaseDate = ep.released ? new Date(ep.released) : null;
 				const isFuture = releaseDate && releaseDate > new Date();
@@ -165,29 +212,33 @@ document.addEventListener('DOMContentLoaded', function() {
 				}
 
 				let checkButton = '';
-				if (isLogged && !isFuture) {
+				if (isLoggedLocal && !isFuture) {
 					const isWatched = watchedEpisodes.includes(ep.id);
 					const checkedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
 					const uncheckedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
 					checkButton = `<button class="watched-check" data-ep-id="${ep.id}">${isWatched ? checkedSvg : uncheckedSvg}</button>`;
 				}
 
-				// Adiciona atributos data-season e data-episode para clique
-				episodesHtml += `
-					<li data-season="${ep.season}" data-episode="${ep.episode}" class="episode-item-li">
-						<div class="episode-item">
-							${mediaHtml}
-							<div class="ep-info">
-								<strong>${ep.episode}. ${ep.name}</strong>
-								${ep.released ? `<br><small>${new Date(ep.released).toLocaleDateString()}</small>` : ''}
-							</div>
-							${checkButton}
+				const li = document.createElement('li');
+				li.setAttribute('data-season', ep.season);
+				li.setAttribute('data-episode', ep.episode);
+				li.className = 'episode-item-li';
+				li.innerHTML = `
+					<div class="episode-item">
+						${mediaHtml}
+						<div class="ep-info">
+							<strong>${ep.episode}. ${escapeHtml(ep.name)}</strong>
+							${ep.released ? `<br><small>${new Date(ep.released).toLocaleDateString()}</small>` : ''}
 						</div>
-					</li>
+						${checkButton}
+					</div>
 				`;
+				ul.appendChild(li);
 			});
-			episodesHtml += '</ul>';
-			container.innerHTML = episodesHtml;
+
+			episodesFragment.appendChild(ul);
+			container.innerHTML = '';
+			container.appendChild(episodesFragment);
 
 			// Validação de imagens
 			const images = container.querySelectorAll('img.check-thumb');
@@ -215,11 +266,10 @@ document.addEventListener('DOMContentLoaded', function() {
 				}
 			});
 
-			// Evento de clique no episódio (para abrir no Stremio)
+			// Evento de clique no episódio
 			const episodeItems = container.querySelectorAll('.episode-item-li');
 			episodeItems.forEach(item => {
 				item.addEventListener('click', (e) => {
-					// Evita que o clique no botão de check dispare a abertura
 					if (e.target.closest('.watched-check')) return;
 					const season = item.getAttribute('data-season');
 					const episode = item.getAttribute('data-episode');
@@ -228,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			});
 
 			// Eventos para botões de assistido
-			if (isLogged) {
+			if (isLoggedLocal) {
 				const checkButtons = container.querySelectorAll('.watched-check');
 				checkButtons.forEach(btn => {
 					btn.addEventListener('click', (e) => {
@@ -243,14 +293,24 @@ document.addEventListener('DOMContentLoaded', function() {
 				});
 			}
 
-			// Atualiza a barra de progresso fixa para esta temporada (se logado)
 			updateFixedProgress(seasonIndex);
 		}
 
-		selectEl.addEventListener('change', (e) => {
+		selectElement.addEventListener('change', (e) => {
 			currentSeasonIndex = parseInt(e.target.value, 10);
 			renderEpisodesForSeason(currentSeasonIndex);
 		});
+
 		renderEpisodesForSeason(currentSeasonIndex);
+	}
+
+	function escapeHtml(str) {
+		if (!str) return '';
+		return str.replace(/[&<>]/g, function(m) {
+			if (m === '&') return '&amp;';
+			if (m === '<') return '&lt;';
+			if (m === '>') return '&gt;';
+			return m;
+		});
 	}
 });

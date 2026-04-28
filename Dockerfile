@@ -14,6 +14,10 @@ RUN go get github.com/a-h/templ@v0.2.707
 # Instala o CLI do templ
 RUN go install github.com/a-h/templ/cmd/templ@v0.2.707
 
+# Copiar go.mod primeiro para cache de dependências  
+COPY go.mod go.sum ./  
+RUN go mod download  
+
 # Copia todo o código fonte
 COPY . .
 

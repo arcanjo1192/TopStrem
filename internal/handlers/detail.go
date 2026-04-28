@@ -1,9 +1,12 @@
 package handlers
 
 import (
+    "context"
     "net/http"
     "strings"
+    "time"
 
+    "golang.org/x/sync/errgroup"
     "topstrem/internal/api"
     "topstrem/internal/i18n"
     "topstrem/internal/models"
@@ -19,77 +22,141 @@ func DetailHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterf
         }
         mediaType := pathParts[2]
         id := pathParts[3] // IMDb ID, ex: tt0133093
-		
-		if mediaType != "movie" && mediaType != "series" {  
-			http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)  
-			return  
-		}  
-		if !strings.HasPrefix(id, "tt") || len(id) < 3 {  
-			http.Error(w, "ID IMDb inválido", http.StatusBadRequest)  
-			return  
-		}
+
+        if mediaType != "movie" && mediaType != "series" {
+            http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)
+            return
+        }
+        if !strings.HasPrefix(id, "tt") || len(id) < 3 {
+            http.Error(w, "ID IMDb inválido", http.StatusBadRequest)
+            return
+        }
 
         lang := i18n.DetectLanguage(r)
 
-        // Busca dados do Cinemata (inclui trailers originais)
-        meta, err := apiClient.GetMeta(mediaType, id)
-        if err != nil {
+        // Contexto com timeout global (ex: 5 segundos)
+        ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+        defer cancel()
+
+        // Estruturas para resultados concorrentes
+        var (
+            meta        *models.Meta
+            cinemataErr error
+            tmdbData    struct {
+                found       bool
+                tmdbID      int
+                tmdbType    string
+                details     interface{} // pode ser *TMDBMovieDetails ou *TMDBSeriesDetails
+                trailers    []models.Trailer
+                name, overview string
+            }
+        )
+
+        g, ctx := errgroup.WithContext(ctx)
+
+        // Goroutine 1: Buscar dados do Cinemata (metadados base)
+        g.Go(func() error {
+            m, err := apiClient.GetMeta(mediaType, id)
+            if err != nil {
+                cinemataErr = err
+                return err
+            }
+            meta = m
+            return nil
+        })
+
+        // Goroutine 2: Buscar dados complementares do TMDB (se cliente existir)
+        if tmdbClient != nil {
+            g.Go(func() error {
+                // 2.1 Encontrar ID no TMDB
+                tmdbID, tmdbMediaType, err := tmdbClient.FindByIMDBID(id)
+                if err != nil {
+                    // Não falha a página inteira se TMDB falhar
+                    return nil
+                }
+                tmdbData.found = true
+                tmdbData.tmdbID = tmdbID
+                tmdbData.tmdbType = tmdbMediaType
+
+                // 2.2 Buscar detalhes (filme ou série)
+                if tmdbMediaType == "movie" {
+                    details, err := tmdbClient.GetMovieDetails(tmdbID, lang)
+                    if err != nil {
+                        return nil
+                    }
+                    tmdbData.details = details
+                    if details.Title != "" {
+                        tmdbData.name = details.Title
+                    }
+                    if details.Overview != "" {
+                        tmdbData.overview = details.Overview
+                    }
+                    // Extrair trailers
+                    for _, video := range details.Videos.Results {
+                        if video.Site == "YouTube" && video.Type == "Trailer" {
+                            tmdbData.trailers = append(tmdbData.trailers, models.Trailer{
+                                Source: video.Key,
+                                Type:   video.Type,
+                            })
+                        }
+                    }
+                } else if tmdbMediaType == "series" {
+                    details, err := tmdbClient.GetTVDetails(tmdbID, lang)
+                    if err != nil {
+                        return nil
+                    }
+                    tmdbData.details = details
+                    if details.Name != "" {
+                        tmdbData.name = details.Name
+                    }
+                    if details.Overview != "" {
+                        tmdbData.overview = details.Overview
+                    }
+                    for _, video := range details.Videos.Results {
+                        if video.Site == "YouTube" && video.Type == "Trailer" {
+                            tmdbData.trailers = append(tmdbData.trailers, models.Trailer{
+                                Source: video.Key,
+                                Type:   video.Type,
+                            })
+                        }
+                    }
+                }
+                return nil
+            })
+        }
+
+        // Aguarda conclusão de ambas goroutines (ou timeout)
+        if err := g.Wait(); err != nil {
+            // Se o Cinemata falhou, retorna erro (TMDB opcional)
+            if cinemataErr != nil {
+                http.Error(w, "Título não encontrado", http.StatusNotFound)
+                return
+            }
+            // Se apenas o TMDB falhou, segue com os dados do Cinemata
+        }
+
+        // Se o TMDB retornou dados melhores, enriquece o meta
+        if tmdbData.found && meta != nil {
+            // Prioriza nome e sinopse do TMDB se disponíveis
+            if tmdbData.name != "" {
+                meta.Name = tmdbData.name
+            }
+            if tmdbData.overview != "" {
+                meta.Description = tmdbData.overview
+            }
+            // Insere trailers do TMDB no início (prioridade)
+            if len(tmdbData.trailers) > 0 {
+                meta.Trailers = append(tmdbData.trailers, meta.Trailers...)
+            }
+        }
+
+        // Se mesmo após paralelismo o meta for nulo (caso extremo)
+        if meta == nil {
             http.Error(w, "Título não encontrado", http.StatusNotFound)
             return
         }
 
-        // Tenta enriquecer com TMDB (título, sinopse e trailers)
-        if tmdbClient != nil {
-            tmdbID, tmdbMediaType, err := tmdbClient.FindByIMDBID(id)
-            if err == nil && (tmdbMediaType == "movie" || tmdbMediaType == "series") {
-                var tmdbTrailers []models.Trailer
-                if tmdbMediaType == "movie" {
-                    details, err := tmdbClient.GetMovieDetails(tmdbID, lang)
-                    if err == nil && details != nil {
-                        // Título e sinopse
-                        if details.Title != "" {
-                            meta.Name = details.Title
-                        }
-                        if details.Overview != "" {
-                            meta.Description = details.Overview
-                        }
-                        // Trailers (YouTube, tipo "Trailer")
-                        for _, video := range details.Videos.Results {
-                            if video.Site == "YouTube" && video.Type == "Trailer" {
-                                tmdbTrailers = append(tmdbTrailers, models.Trailer{
-                                    Source: video.Key,
-                                    Type:   video.Type,
-                                })
-                            }
-                        }
-                    }
-                } else { // series
-                    details, err := tmdbClient.GetTVDetails(tmdbID, lang)
-                    if err == nil && details != nil {
-                        if details.Name != "" {
-                            meta.Name = details.Name
-                        }
-                        if details.Overview != "" {
-                            meta.Description = details.Overview
-                        }
-                        for _, video := range details.Videos.Results {
-                            if video.Site == "YouTube" && video.Type == "Trailer" {
-                                tmdbTrailers = append(tmdbTrailers, models.Trailer{
-                                    Source: video.Key,
-                                    Type:   video.Type,
-                                })
-                            }
-                        }
-                    }
-                }
-
-                // Prioriza trailers do TMDB (insere no início da lista)
-                if len(tmdbTrailers) > 0 {
-                    meta.Trailers = append(tmdbTrailers, meta.Trailers...)
-                }
-            }
-        }
-
+        // Renderiza o template com os dados enriquecidos
         templates.DetailPage(*meta, lang).Render(r.Context(), w)
     }
 }
