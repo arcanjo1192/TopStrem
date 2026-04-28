@@ -1,0 +1,9 @@
+# Allow all crawlers to access the entire site
+User-agent: *
+Allow: /
+
+# Optional: block API endpoints to avoid unnecessary load
+Disallow: /api/
+
+# Sitemap location (if you create one later)
+# Sitemap: https://seusite.com/sitemap.xml

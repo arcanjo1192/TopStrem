@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Autenticando...</title></head>
+<body>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+        localStorage.setItem('auth_token', token);
+        window.location.href = '/';
+    } else {
+        window.location.href = '/?error=login_failed';
+    }
+</script>
+</body>
+</html>
