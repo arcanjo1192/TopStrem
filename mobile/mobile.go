@@ -1,4 +1,3 @@
-// mobile/mobile.go
 package mobile
 
 import (
@@ -8,19 +7,26 @@ import (
     "topstrem/internal/handlers"
 )
 
-// StartServer inicia o servidor HTTP.
 func StartServer() {
-    apiClient := api.NewClient()
+    // Cliente para catálogo
+    cinemetaClient := api.NewClient()
+
+    // Cliente TMDB
+    tmdbClient, err := api.NewTMDBClient()
+    if err != nil {
+        panic("falha ao criar cliente TMDB: " + err.Error())
+    }
+
+    // Cliente WatchHub
     watchClient := api.NewWatchHubClient()
 
-    // Rotas públicas
+    // Rotas - agora com os argumentos corretos
     http.HandleFunc("/", handlers.HomeHandler)
-    http.HandleFunc("/catalog/", handlers.CatalogHandler(apiClient))
-    http.HandleFunc("/detail/", handlers.DetailHandler(apiClient))
-    http.HandleFunc("/favorites", handlers.FavoritesHandler(apiClient))
-    http.HandleFunc("/api/episodes/", handlers.EpisodesHandler(apiClient))
+    http.HandleFunc("/catalog/", handlers.CatalogHandler(cinemetaClient))
+    http.HandleFunc("/detail/", handlers.DetailHandler(cinemetaClient, tmdbClient))
+    http.HandleFunc("/favorites", handlers.FavoritesHandler(cinemetaClient))
+    http.HandleFunc("/api/episodes/", handlers.EpisodesHandler(cinemetaClient, tmdbClient))
     http.HandleFunc("/api/watch/", handlers.WatchHandler(watchClient))
 
-    // Inicia o servidor
-    go http.ListenAndServe(":8080", nil)
+    http.ListenAndServe(":8080", nil)
 }

@@ -15,5 +15,5 @@ require (
     github.com/cespare/xxhash/v2 v2.2.0 // indirect
     github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
     github.com/joho/godotenv v1.5.1 // indirect (se usado)
-    golang.org/x/mobile v0.0.0-20260410095206-2cfb76559b7b // indirect
+	golang.org/x/mobile v0.0.0-20260410095206-2cfb76559b7b // indirect
 )
