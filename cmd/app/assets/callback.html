@@ -2,15 +2,20 @@
 <html>
 <head><title>Autenticando...</title></head>
 <body>
-<script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    if (token) {
-        localStorage.setItem('auth_token', token);
-        window.location.href = '/';
-    } else {
-        window.location.href = '/?error=login_failed';
-    }
+<script>  
+    const urlParams = new URLSearchParams(window.location.search);  
+    const token = urlParams.get('token');  
+    if (token) {  
+        if (window.isMobileApp && window.AndroidInterface) {  
+            // Envia token para o app nativo  
+            window.AndroidInterface.onLoginSuccess(token);  
+        } else {  
+            localStorage.setItem('auth_token', token);  
+            window.location.href = '/';  
+        }  
+    } else {  
+        window.location.href = '/?error=login_failed';  
+    }  
 </script>
 </body>
 </html>

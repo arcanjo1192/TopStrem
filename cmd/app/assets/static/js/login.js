@@ -54,6 +54,31 @@ function updateUserUI() {
     initWatchlistButtons();
 }
 
+function setupMobileLogin() {  
+    if (window.isMobileApp) {  
+        const loginBtn = document.getElementById('login-link');  
+        if (loginBtn) {  
+            loginBtn.addEventListener('click', function(e) {  
+                e.preventDefault();  
+                handleMobileLogin();  
+            });  
+        }  
+    }  
+}  
+  
+// Função chamada pelo Android após login sucesso  
+window.mobileLoginSuccess = function(token) {  
+    localStorage.setItem('auth_token', token);  
+    updateUserUI();  
+    window.location.href = '/';  
+};  
+  
+// Chame no DOMContentLoaded  
+document.addEventListener('DOMContentLoaded', function() {  
+    // ... código existente ...  
+    setupMobileLogin();  
+});
+
 function logout() {
     localStorage.removeItem('auth_token');
     updateUserUI();

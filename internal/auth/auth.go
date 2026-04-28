@@ -2,9 +2,11 @@ package auth
 
 import (
     "context"
+    "encoding/json"
     "fmt"
     "net/http"
     "os"
+    "strings"
 
     "golang.org/x/oauth2"
     "golang.org/x/oauth2/google"
@@ -40,6 +42,16 @@ func InitAuth(clientID, clientSecret, redirectURL string) {
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
     url := authConfig.OAuth2Config.AuthCodeURL("random-state", oauth2.AccessTypeOffline)
+
+    userAgent := r.Header.Get("User-Agent")
+    isWebView := strings.Contains(userAgent, "wv") || strings.Contains(userAgent, "WebView")
+
+    if isWebView {
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(map[string]string{"url": url})
+        return
+    }
+
     http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
