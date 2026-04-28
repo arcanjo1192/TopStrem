@@ -16,7 +16,7 @@ type SeasonGroup struct {
     Episodes     []models.Video `json:"episodes"`
 }
 
-func EpisodesHandler(apiClient *api.Client, tmdbClient *api.TMDBClient) http.HandlerFunc {
+func EpisodesHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         pathParts := strings.Split(r.URL.Path, "/")
         if len(pathParts) < 4 {
@@ -24,8 +24,16 @@ func EpisodesHandler(apiClient *api.Client, tmdbClient *api.TMDBClient) http.Han
             return
         }
         id := pathParts[3]
+		if !strings.HasPrefix(id, "tt") || len(id) < 3 {  
+			http.Error(w, "ID IMDb inválido", http.StatusBadRequest)  
+			return  
+		}  
 
         lang := r.URL.Query().Get("lang")
+		if len(lang) > 0 && len(lang) < 2 {  
+			http.Error(w, "Código de idioma inválido", http.StatusBadRequest)  
+			return  
+		}
         if lang == "" {
             lang = "pt"
         }

@@ -8,7 +8,7 @@ import (
     "topstrem/internal/api"
 )
 
-func WatchHandler(watchClient *api.WatchHubClient) http.HandlerFunc {
+func WatchHandler(watchClient api.WatchHubClientInterface) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         pathParts := strings.Split(r.URL.Path, "/")
         if len(pathParts) < 5 {
@@ -17,6 +17,15 @@ func WatchHandler(watchClient *api.WatchHubClient) http.HandlerFunc {
         }
         mediaType := pathParts[3]
         id := pathParts[4]
+		
+		if mediaType != "movie" && mediaType != "series" {  
+			http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)  
+			return  
+		}  
+		if id == "" {  
+			http.Error(w, "ID não fornecido", http.StatusBadRequest)  
+			return  
+		}
 
         streams, err := watchClient.GetStreams(mediaType, id)
         if err != nil {

@@ -147,11 +147,16 @@ type TMDBWatchProvidersResponse struct {
 }
 
 // ==================== Construtor ====================
-func NewTMDBClient() *TMDBClient {
-    return &TMDBClient{
-        httpClient: &http.Client{Timeout: 10 * time.Second},
-        apiKey:     os.Getenv("TMDB_API_KEY"),
-    }
+func NewTMDBClient() (*TMDBClient, error) {  
+    apiKey := os.Getenv("TMDB_API_KEY")  
+    if apiKey == "" {  
+        return nil, fmt.Errorf("TMDB_API_KEY environment variable is required but not set")  
+    }  
+      
+    return &TMDBClient{  
+        httpClient: &http.Client{Timeout: 10 * time.Second},  
+        apiKey:     apiKey,  
+    }, nil  
 }
 
 // ==================== Métodos públicos ====================

@@ -10,7 +10,7 @@ import (
     "topstrem/internal/templates"
 )
 
-func DetailHandler(apiClient *api.Client, tmdbClient *api.TMDBClient) http.HandlerFunc {
+func DetailHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         pathParts := strings.Split(r.URL.Path, "/")
         if len(pathParts) < 4 {
@@ -19,6 +19,15 @@ func DetailHandler(apiClient *api.Client, tmdbClient *api.TMDBClient) http.Handl
         }
         mediaType := pathParts[2]
         id := pathParts[3] // IMDb ID, ex: tt0133093
+		
+		if mediaType != "movie" && mediaType != "series" {  
+			http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)  
+			return  
+		}  
+		if !strings.HasPrefix(id, "tt") || len(id) < 3 {  
+			http.Error(w, "ID IMDb inválido", http.StatusBadRequest)  
+			return  
+		}
 
         lang := i18n.DetectLanguage(r)
 

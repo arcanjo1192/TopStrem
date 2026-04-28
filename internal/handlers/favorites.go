@@ -9,7 +9,7 @@ import (
     "topstrem/internal/templates"
 )
 
-func FavoritesHandler(apiClient *api.Client) http.HandlerFunc {
+func FavoritesHandler(apiClient api.CinemetaClient) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         lang := i18n.DetectLanguage(r)
         catalogType := r.URL.Query().Get("type") // "movie" ou "series"
@@ -25,6 +25,15 @@ func FavoritesHandler(apiClient *api.Client) http.HandlerFunc {
         }
 
         ids := strings.Split(idsParam, ",")
+		
+		for _, id := range ids {  
+			id = strings.TrimSpace(id)  
+			if !strings.HasPrefix(id, "tt") || len(id) < 3 {  
+				http.Error(w, "ID IMDb inválido nos favoritos: "+id, http.StatusBadRequest)  
+				return  
+			}  
+		}
+				
         metas := make([]models.CatalogMeta, 0, len(ids))
 
         for _, id := range ids {
