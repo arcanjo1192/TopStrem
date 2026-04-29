@@ -139,6 +139,10 @@ func StartServer() {
     http.HandleFunc("/auth/login", middleware.CORS(rateLimiter.Middleware(auth.LoginHandler)))
     http.HandleFunc("/auth/callback", middleware.CORS(rateLimiter.Middleware(auth.CallbackHandler)))
 
+    // Endpoints adicionais de autenticação
+    http.HandleFunc("/api/me", middleware.CORS(auth.MeHandler))
+    http.HandleFunc("/auth/logout", middleware.CORS(auth.LogoutHandler))
+
     // ========== 9. CRIAR SERVIDOR COM GRACEFUL SHUTDOWN ==========
     server := &http.Server{
         Addr:         ":" + port,

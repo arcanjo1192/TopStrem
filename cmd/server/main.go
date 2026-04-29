@@ -94,12 +94,18 @@ func main() {
     http.HandleFunc("/api/episodes/", middleware.CORS(apiRateLimiter.Middleware(handlers.EpisodesHandler(cachedApiClient, cachedTmdbClient))))
     http.HandleFunc("/api/watch/", middleware.CORS(apiRateLimiter.Middleware(handlers.WatchHandler(cachedWatchClient))))
 
-    // Autenticação (sem CSRF, mas com rate limit e CORS)
+    // Autenticação
     http.HandleFunc("/auth/login", middleware.CORS(rateLimiter.Middleware(auth.LoginHandler)))
     http.HandleFunc("/auth/callback", middleware.CORS(rateLimiter.Middleware(auth.CallbackHandler)))
-	
-	http.HandleFunc("/api/me", auth.MeHandler)
-	http.HandleFunc("/auth/logout", auth.LogoutHandler)	
+    
+    http.HandleFunc("/api/me", middleware.CORS(auth.MeHandler))
+    http.HandleFunc("/auth/logout", middleware.CORS(auth.LogoutHandler))
+
+    // Health check endpoint
+    http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprintf(w, `{"status":"ok","timestamp":"%s"}`, time.Now().Format(time.RFC3339))
+    })
 
     // ========== 6. CONFIGURAÇÃO DO AUTH (GOOGLE OAUTH) ==========
     baseURL := os.Getenv("BASE_URL")

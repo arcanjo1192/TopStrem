@@ -3,7 +3,6 @@ package auth
 import (
     "context"
     "encoding/json"
-    "fmt"
     "net/http"
     "os"
     "strings"
@@ -107,18 +106,13 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
     }
     
     // Armazenar token em HttpOnly secure cookie em vez de URL
-	secureFlag := authConfig.CookieSecure
-	sameSiteMode := http.SameSiteLaxMode
-	if secureFlag {
-		sameSiteMode = http.SameSiteStrictMode
-	}
     cookie := &http.Cookie{
         Name:     "auth_token",
         Value:    jwtToken,
         Path:     "/",
         HttpOnly: true,
-        Secure:   secureFlag,
-        SameSite: sameSiteMode,
+        Secure:   authConfig.CookieSecure, // true em produção
+        SameSite: http.SameSiteStrictMode,
         MaxAge:   72 * 3600, // 72 horas
     }
     http.SetCookie(w, cookie)
@@ -127,67 +121,59 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
     http.Redirect(w, r, "/", http.StatusFound)
 }
 
-// ==================== Handlers para API de usuário e logout ====================
-
-// validateJWT valida o token JWT e retorna as claims
-func validateJWT(tokenString string) (jwt.MapClaims, error) {
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-            return nil, fmt.Errorf("método de assinatura inesperado: %v", token.Header["alg"])
-        }
-        return authConfig.JWTSecret, nil
-    })
-    if err != nil {
-        return nil, err
-    }
-    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-        return claims, nil
-    }
-    return nil, fmt.Errorf("token inválido")
-}
-
-// MeHandler retorna os dados do usuário logado (email e nome)
+// MeHandler retorna dados do usuário autenticado a partir do JWT no cookie
 func MeHandler(w http.ResponseWriter, r *http.Request) {
+    // Obter token do cookie
     cookie, err := r.Cookie("auth_token")
     if err != nil {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        http.Error(w, "Não autenticado", http.StatusUnauthorized)
         return
     }
 
-    claims, err := validateJWT(cookie.Value)
-    if err != nil {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+    tokenString := cookie.Value
+    if tokenString == "" {
+        http.Error(w, "Não autenticado", http.StatusUnauthorized)
         return
     }
 
-    email, ok := claims["email"].(string)
-    if !ok || email == "" {
-        http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+    // Validar e parsear JWT
+    claims := jwt.MapClaims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return authConfig.JWTSecret, nil
+    })
+
+    if err != nil || !token.Valid {
+        http.Error(w, "Token inválido", http.StatusUnauthorized)
         return
     }
-    name, _ := claims["name"].(string)
-    if name == "" {
-        name = email
-    }
 
+    // Retornar dados do usuário
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]string{
-        "email": email,
-        "name":  name,
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "email": claims["email"],
+        "name":  claims["name"],
     })
 }
 
-// LogoutHandler limpa o cookie auth_token
+// LogoutHandler limpa o cookie de autenticação
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "POST" {
+        http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+        return
+    }
+
+    // Limpar cookie definindo MaxAge negativo
     cookie := &http.Cookie{
         Name:     "auth_token",
         Value:    "",
         Path:     "/",
         HttpOnly: true,
         Secure:   authConfig.CookieSecure,
-        SameSite: http.SameSiteLaxMode,
+        SameSite: http.SameSiteStrictMode,
         MaxAge:   -1,
     }
     http.SetCookie(w, cookie)
-    w.WriteHeader(http.StatusNoContent)
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
 }
