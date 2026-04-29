@@ -239,8 +239,9 @@ function renderNotifications(episodes) {
         const releaseDate = ep.released ? new Date(ep.released) : null;
         const formattedDate = releaseDate ? releaseDate.toLocaleDateString() : '';
         const imgSrc = ep.thumbnail || ep.seriesLogo;
+        // Adicionamos data-series-id e classe para reconhecimento
         html += `
-            <div class="notification-item">
+            <div class="notification-item" data-series-id="${ep.seriesId}">
                 <div style="display: flex; gap: 12px; align-items: flex-start;">
                     <img class="notif-thumb" src="${imgSrc}" alt="${ep.name}" data-fallback="${ep.seriesLogo}"
                          style="width: 80px; height: auto; border-radius: 4px; object-fit: cover;">
@@ -255,6 +256,7 @@ function renderNotifications(episodes) {
     }
     contentDiv.innerHTML = html;
 
+    // Validação de imagens (mantida como antes)
     const images = contentDiv.querySelectorAll('.notif-thumb');
     images.forEach(img => {
         function validateImage() {
@@ -282,6 +284,18 @@ function renderNotifications(episodes) {
                 }
             };
         }
+    });
+
+    // Adiciona evento de clique para redirecionar para a série
+    const items = contentDiv.querySelectorAll('.notification-item');
+    items.forEach(item => {
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', function(e) {
+            const seriesId = this.getAttribute('data-series-id');
+            if (seriesId) {
+                window.location.href = `/detail/series/${seriesId}`;
+            }
+        });
     });
 
     updateBadge(episodes.length);
