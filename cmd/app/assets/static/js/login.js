@@ -1,49 +1,70 @@
-// ==================== JWT / Autenticação ====================
-function parseJWT(token) {
+// ==================== Autenticação com Cookie HttpOnly ====================
+
+// Estado global do usuário (preenchido via /api/me)
+let currentUser = {
+    email: null,
+    name: null,
+    isLoggedIn: false
+};
+
+// Função para buscar os dados do usuário a partir do cookie enviado automaticamente
+async function fetchCurrentUser() {
     try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
+        const response = await fetch('/api/me', {
+            credentials: 'same-origin' // inclui o cookie HttpOnly
+        });
+        if (response.ok) {
+            const user = await response.json();
+            currentUser.email = user.email;
+            currentUser.name = user.name;
+            currentUser.isLoggedIn = true;
+        } else {
+            currentUser.email = null;
+            currentUser.name = null;
+            currentUser.isLoggedIn = false;
+        }
+        updateUserUI();
+        return currentUser.isLoggedIn;
+    } catch (err) {
+        console.error('Erro ao verificar autenticação:', err);
+        currentUser.isLoggedIn = false;
+        updateUserUI();
+        return false;
     }
 }
 
+// Funções auxiliares (substituem as antigas baseadas em localStorage)
 function getCurrentUserEmail() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return null;
-    const payload = parseJWT(token);
-    return payload && payload.email ? payload.email : null;
+    return currentUser.email;
 }
 
+function isUserLoggedIn() {
+    return currentUser.isLoggedIn;
+}
+
+// Atualiza a interface de acordo com o estado do usuário
 function updateUserUI() {
-    const token = localStorage.getItem('auth_token');
     const userDropdown = document.getElementById('user-dropdown');
     const loginLink = document.getElementById('login-link');
     const notificationsBtn = document.getElementById('notifications-btn');
     const userNameSpan = document.getElementById('user-name-display');
     const userInitialSpan = document.getElementById('user-initial');
 
-    const isLoggedIn = token && parseJWT(token) && parseJWT(token).name;
-	
-	const isMobileApp = window.isMobileApp === true;
+    const isLoggedIn = currentUser.isLoggedIn;
+    const isMobileApp = window.isMobileApp === true;
 
     if (isLoggedIn) {
-        const payload = parseJWT(token);
         if (userDropdown) userDropdown.style.display = 'inline-block';
         if (loginLink) loginLink.style.display = 'none';
         if (notificationsBtn) notificationsBtn.style.display = 'inline-block';
-        if (userNameSpan) userNameSpan.textContent = payload.name;
-        if (userInitialSpan) userInitialSpan.textContent = payload.name.charAt(0).toUpperCase();
+        if (userNameSpan) userNameSpan.textContent = currentUser.name;
+        if (userInitialSpan) userInitialSpan.textContent = currentUser.name.charAt(0).toUpperCase();
         attachFavoritesListeners();
     } else {
         if (userDropdown) userDropdown.style.display = 'none';
         if (loginLink) loginLink.style.display = isMobileApp ? 'none' : 'inline-block';
         if (notificationsBtn) notificationsBtn.style.display = 'none';
-        if (token) localStorage.removeItem('auth_token');
+        // Não remove token porque não há token no localStorage
     }
 
     const watchlistBtns = document.querySelectorAll('.watchlist-btn, .watchlist-detail-btn');
@@ -54,38 +75,40 @@ function updateUserUI() {
     initWatchlistButtons();
 }
 
-function setupMobileLogin() {  
-    if (window.isMobileApp) {  
-        const loginBtn = document.getElementById('login-link');  
-        if (loginBtn) {  
-            loginBtn.addEventListener('click', function(e) {  
-                e.preventDefault();  
-                handleMobileLogin();  
-            });  
-        }  
-    }  
-}  
-  
-// Função chamada pelo Android após login sucesso  
-window.mobileLoginSuccess = function(token) {  
-    localStorage.setItem('auth_token', token);  
-    updateUserUI();  
-    window.location.href = '/';  
-};  
-  
-// Chame no DOMContentLoaded  
-document.addEventListener('DOMContentLoaded', function() {  
-    // ... código existente ...  
-    setupMobileLogin();  
-});
-
-function logout() {
-    localStorage.removeItem('auth_token');
-    updateUserUI();
-    window.location.reload();
+// Logout: chama o endpoint que limpa o cookie
+async function logout() {
+    try {
+        await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        currentUser.isLoggedIn = false;
+        currentUser.email = null;
+        currentUser.name = null;
+        updateUserUI();
+        window.location.reload(); // recarrega para garantir estado limpo
+    } catch (err) {
+        console.error('Erro no logout:', err);
+    }
 }
 
-// ==================== Watchlist ====================
+// Suporte para WebView Android (não precisa mais receber token)
+window.mobileLoginSuccess = function() {
+    // Recarrega a página; o cookie já foi setado, o fetchCurrentUser() o detectará
+    window.location.href = '/';
+};
+
+function setupMobileLogin() {
+    if (window.isMobileApp) {
+        const loginBtn = document.getElementById('login-link');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Redirecionamento normal (o backend já trata WebView)
+                window.location.href = '/auth/login';
+            });
+        }
+    }
+}
+
+// ==================== Watchlist (mantém localStorage, mas baseado no email) ====================
 function getWatchlistKey() {
     const email = getCurrentUserEmail();
     if (!email) return null;
@@ -137,10 +160,6 @@ function toggleWatchlist(item) {
     }
 }
 
-function isUserLoggedIn() {
-    return !!getCurrentUserEmail();
-}
-
 function updateWatchlistButton(btn, saved) {
     if (saved) {
         btn.classList.add('saved');
@@ -149,7 +168,7 @@ function updateWatchlistButton(btn, saved) {
     }
 }
 
-// ==================== Episódios assistidos (para filtro de notificações) ====================
+// ==================== Episódios assistidos (localStorage baseado no email) ====================
 function getWatchedEpisodesKey() {
     const email = getCurrentUserEmail();
     if (!email) return null;
@@ -209,12 +228,11 @@ async function loadNotifications() {
     const seriesList = watchlist.filter(item => item.type === 'series');
     if (seriesList.length === 0) return [];
 
-    const watchedEpisodes = getWatchedEpisodes(); // IDs dos episódios já assistidos
+    const watchedEpisodes = getWatchedEpisodes();
 
     const allEpisodes = [];
     for (const series of seriesList) {
         const episodes = await fetchSeriesEpisodes(series.id, series.name);
-        // Filtra apenas os episódios que NÃO estão assistidos
         const unwatchedEpisodes = episodes.filter(ep => !watchedEpisodes.includes(ep.id));
         if (unwatchedEpisodes.length > 0) {
             allEpisodes.push(...unwatchedEpisodes);
@@ -239,7 +257,6 @@ function renderNotifications(episodes) {
         const releaseDate = ep.released ? new Date(ep.released) : null;
         const formattedDate = releaseDate ? releaseDate.toLocaleDateString() : '';
         const imgSrc = ep.thumbnail || ep.seriesLogo;
-        // Adicionamos data-series-id e classe para reconhecimento
         html += `
             <div class="notification-item" data-series-id="${ep.seriesId}">
                 <div style="display: flex; gap: 12px; align-items: flex-start;">
@@ -256,7 +273,6 @@ function renderNotifications(episodes) {
     }
     contentDiv.innerHTML = html;
 
-    // Validação de imagens (mantida como antes)
     const images = contentDiv.querySelectorAll('.notif-thumb');
     images.forEach(img => {
         function validateImage() {
@@ -286,7 +302,6 @@ function renderNotifications(episodes) {
         }
     });
 
-    // Adiciona evento de clique para redirecionar para a série
     const items = contentDiv.querySelectorAll('.notification-item');
     items.forEach(item => {
         item.style.cursor = 'pointer';
@@ -315,7 +330,6 @@ function updateBadge(count) {
     }
 }
 
-// ==================== Atualização de notificações após alteração na watchlist ====================
 async function refreshNotifications() {
     if (!isUserLoggedIn()) return;
     const episodes = await loadNotifications();
@@ -406,8 +420,10 @@ function attachFavoritesListeners() {
 }
 
 // ==================== Inicialização ====================
-document.addEventListener('DOMContentLoaded', function() {
-    updateUserUI();
+document.addEventListener('DOMContentLoaded', async function() {
+    // Primeiro, obtém o estado do usuário via cookie
+    await fetchCurrentUser();
+
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
@@ -444,6 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initWatchlistButtons();
     attachFavoritesListeners();
+    setupMobileLogin();
 });
 
 document.addEventListener('htmx:afterSettle', function() {

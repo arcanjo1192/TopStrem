@@ -1,1 +1,40 @@
+# Environment variables
+.env
+.env.prod
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.o
+*.a
+*.so
+topstrem
+topstrem.exe
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor/
+node_modules/
+
+# Logs
+*.log
+
+# Sensitive files
+.env*
+!.env.example
+!.env.prod.example
+
+# Docker
 docker-compose.yml

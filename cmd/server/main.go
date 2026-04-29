@@ -97,6 +97,9 @@ func main() {
     // Autenticação (sem CSRF, mas com rate limit e CORS)
     http.HandleFunc("/auth/login", middleware.CORS(rateLimiter.Middleware(auth.LoginHandler)))
     http.HandleFunc("/auth/callback", middleware.CORS(rateLimiter.Middleware(auth.CallbackHandler)))
+	
+	http.HandleFunc("/api/me", auth.MeHandler)
+	http.HandleFunc("/auth/logout", auth.LogoutHandler)	
 
     // ========== 6. CONFIGURAÇÃO DO AUTH (GOOGLE OAUTH) ==========
     baseURL := os.Getenv("BASE_URL")
