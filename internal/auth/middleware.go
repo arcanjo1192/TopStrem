@@ -4,29 +4,16 @@ import (
     "context"
     "fmt"
     "net/http"
-    "strings"
 
     "github.com/golang-jwt/jwt/v5"
 )
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        // Tentar pegar token do cookie primeiro
-        var tokenString string
-        
-        cookie, err := r.Cookie("auth_token")
-        if err == nil {
-            tokenString = cookie.Value
-        }
-        
-        // Fallback para Authorization header
+        tokenString := getTokenFromRequest(r)
         if tokenString == "" {
-            authHeader := r.Header.Get("Authorization")
-            if authHeader == "" {
-                http.Error(w, "Token não fornecido", http.StatusUnauthorized)
-                return
-            }
-            tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+            http.Error(w, "Token não fornecido", http.StatusUnauthorized)
+            return
         }
         
         claims := &jwt.MapClaims{}

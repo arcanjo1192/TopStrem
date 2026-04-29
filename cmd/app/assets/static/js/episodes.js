@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', function() {
 	// ========== PREFETCH: carrega episódios em background ==========
 	function prefetchEpisodes() {
 		if (prefetchPromise) return prefetchPromise; // já em andamento
-		prefetchPromise = fetch('/api/episodes/' + seriesId)
+		prefetchPromise = fetch('/api/episodes/' + seriesId, {
+			headers: { 'Accept': 'application/json' }
+		})
 			.then(response => {
 				if (!response.ok) throw new Error('HTTP ' + response.status);
 				return response.json();
@@ -86,8 +88,9 @@ document.addEventListener('DOMContentLoaded', function() {
 			
 			// Usa os dados pré-carregados (ou aguarda o fetch)
 			(prefetchPromise || prefetchEpisodes())
-				.then(seasons => {
-					renderEpisodes(seasons);
+				.then(data => {
+					// data tem a estrutura { seriesId, seasons: [...] }
+					renderEpisodes(data.seasons);
 					loaded = true;
 				})
 				.catch(err => {

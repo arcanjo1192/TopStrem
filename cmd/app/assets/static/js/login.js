@@ -1,18 +1,62 @@
-// ==================== Autenticação com Cookie HttpOnly ====================
+// ==================== Autenticação Híbrida: Web + Mobile Nativo ====================
 
-// Estado global do usuário (preenchido via /api/me)
+// Estado global do usuário
 let currentUser = {
     email: null,
     name: null,
-    isLoggedIn: false
+    isLoggedIn: false,
+    token: null // para app nativo
 };
 
-// Função para buscar os dados do usuário a partir do cookie enviado automaticamente
+// Detectar tipo de client
+let clientType = {
+    isNativeApp: window.isMobileApp === true || !!window.getAuthToken,
+    isWebBrowser: true
+};
+
+// ========== Funções para App Nativo (com token) ==========
+
+// Obter token armazenado (implementado no app nativo)
+function getStoredToken() {
+    // Para app nativo: implementar no lado nativo
+    // return await secureStorage.getToken()
+    
+    // Fallback: verificar se foi passado via window
+    return window.authToken || null;
+}
+
+// Armazenar token (implementado no app nativo)
+async function storeToken(token) {
+    // Para app nativo: implementar no lado nativo
+    // await secureStorage.setToken(token)
+    
+    // Fallback: guardar em window
+    window.authToken = token;
+}
+
+// Obter token para enviar em requisições (cookie ou header)
+async function getAuthHeader() {
+    if (clientType.isNativeApp) {
+        const token = await getStoredToken();
+        if (token) {
+            return { 'Authorization': 'Bearer ' + token };
+        }
+    }
+    // Para web: browser envia cookie automaticamente
+    return {};
+}
+
+// ========== Funções Comuns para Web + Mobile ==========
+
+// Função para buscar os dados do usuário
 async function fetchCurrentUser() {
     try {
+        const headers = await getAuthHeader();
         const response = await fetch('/api/me', {
-            credentials: 'same-origin' // inclui o cookie HttpOnly
+            headers: headers,
+            credentials: 'same-origin' // inclui o cookie HttpOnly (para web)
         });
+        
         if (response.ok) {
             const user = await response.json();
             currentUser.email = user.email;
@@ -22,6 +66,9 @@ async function fetchCurrentUser() {
             currentUser.email = null;
             currentUser.name = null;
             currentUser.isLoggedIn = false;
+            if (clientType.isNativeApp) {
+                await storeToken(null); // limpar token inválido
+            }
         }
         updateUserUI();
         return currentUser.isLoggedIn;
@@ -33,7 +80,7 @@ async function fetchCurrentUser() {
     }
 }
 
-// Funções auxiliares (substituem as antigas baseadas em localStorage)
+// Funções auxiliares
 function getCurrentUserEmail() {
     return currentUser.email;
 }
@@ -51,7 +98,7 @@ function updateUserUI() {
     const userInitialSpan = document.getElementById('user-initial');
 
     const isLoggedIn = currentUser.isLoggedIn;
-    const isMobileApp = window.isMobileApp === true;
+    const isNativeApp = clientType.isNativeApp;
 
     if (isLoggedIn) {
         if (userDropdown) userDropdown.style.display = 'inline-block';
@@ -62,9 +109,8 @@ function updateUserUI() {
         attachFavoritesListeners();
     } else {
         if (userDropdown) userDropdown.style.display = 'none';
-        if (loginLink) loginLink.style.display = isMobileApp ? 'none' : 'inline-block';
+        if (loginLink) loginLink.style.display = isNativeApp ? 'none' : 'inline-block';
         if (notificationsBtn) notificationsBtn.style.display = 'none';
-        // Não remove token porque não há token no localStorage
     }
 
     const watchlistBtns = document.querySelectorAll('.watchlist-btn, .watchlist-detail-btn');
@@ -75,36 +121,79 @@ function updateUserUI() {
     initWatchlistButtons();
 }
 
-// Logout: chama o endpoint que limpa o cookie
+// Logout
 async function logout() {
     try {
-        await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        const headers = await getAuthHeader();
+        await fetch('/auth/logout', { 
+            method: 'POST',
+            headers: headers,
+            credentials: 'same-origin' 
+        });
+        
         currentUser.isLoggedIn = false;
         currentUser.email = null;
         currentUser.name = null;
+        
+        if (clientType.isNativeApp) {
+            await storeToken(null); // limpar token
+        }
+        
         updateUserUI();
-        window.location.reload(); // recarrega para garantir estado limpo
+        window.location.reload();
     } catch (err) {
         console.error('Erro no logout:', err);
     }
 }
 
-// Suporte para WebView Android (não precisa mais receber token)
-window.mobileLoginSuccess = function() {
-    // Recarrega a página; o cookie já foi setado, o fetchCurrentUser() o detectará
+// ========== Fluxo de Login (Web + Mobile) ==========
+
+// Callback quando autenticação é bem-sucedida (app nativo chama após interceptar deepLink)
+window.onAuthTokenReceived = function(token) {
+    currentUser.token = token;
+    storeToken(token);
+    fetchCurrentUser();
     window.location.href = '/';
 };
 
-function setupMobileLogin() {
-    if (window.isMobileApp) {
-        const loginBtn = document.getElementById('login-link');
-        if (loginBtn) {
-            loginBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Redirecionamento normal (o backend já trata WebView)
-                window.location.href = '/auth/login';
-            });
+// Iniciar login
+async function startLogin() {
+    // Caso 1: Web browser tradicional
+    if (!clientType.isNativeApp) {
+        // Redireciona a página inteira – o backend então redireciona para o Google
+        window.location.href = '/auth/login';
+        return;
+    }
+
+    // Caso 2: App nativo – faz fetch para obter a URL de autenticação
+    try {
+        const response = await fetch('/auth/login', {
+            headers: { 'X-Client-Type': 'native' }
+        });
+        if (!response.ok) throw new Error('Erro ao iniciar login');
+        const data = await response.json();
+
+        if (data.authUrl) {
+            if (window.openExternalBrowser) {
+                window.openExternalBrowser(data.authUrl);
+            } else {
+                window.open(data.authUrl, '_blank');
+            }
         }
+    } catch (err) {
+        console.error('Erro ao iniciar login:', err);
+        alert('Erro ao autenticar. Tente novamente.');
+    }
+}
+
+// Setup de listeners
+function setupMobileLogin() {
+    const loginBtn = document.getElementById('login-link');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            startLogin(); // usa a função unificada
+        });
     }
 }
 

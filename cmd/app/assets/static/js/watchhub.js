@@ -30,7 +30,9 @@ document.addEventListener('DOMContentLoaded', function() {
         contentDiv.innerHTML = `<div class="loading">${watchTrans.loading}</div>`;
         modal.classList.add('show');
 
-        fetch(`/api/watch/${mediaType}/${id}`)
+        fetch(`/api/watch/${mediaType}/${id}`, {
+            headers: { 'Accept': 'application/json' }
+        })
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();

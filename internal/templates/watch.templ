@@ -1,0 +1,48 @@
+package templates
+
+import (
+    "topstrem/internal/models"
+)
+
+templ WatchPage(streams []models.Stream, mediaType string, id string) {
+    <!DOCTYPE html>
+    <html lang="pt">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{ GetBrandName("pt") } - Streaming</title>
+        <meta name="description" content="Encontre os melhores serviços de streaming para assistir seu conteúdo favorito">
+        <link rel="stylesheet" href="/static/style.css">
+        <script src="/static/js/login.js"></script>
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    </head>
+    <body>
+        <div class="watch-container">
+            <header class="watch-header">
+                <h1>Onde Assistir</h1>
+                <p class="watch-type">{ mediaType }</p>
+            </header>
+            
+            <main class="watch-main">
+                <div>
+                    if len(streams) == 0 {
+                        <div class="no-streams">
+                            <p>Nenhum serviço de streaming disponível para este conteúdo.</p>
+                        </div>
+                    } else {
+                        <div class="streams-grid">
+                            for _, stream := range streams {
+                                <div class="stream-card">
+                                    <h3>{ stream.Name }</h3>
+                                    <p class="stream-url">{ stream.ExternalUrl }</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </main>
+        </div>
+    </body>
+    </html>
+}

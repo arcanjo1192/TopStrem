@@ -57,3 +57,9 @@ type Video struct {
     Released  string `json:"released"`
 	Thumbnail string `json:"thumbnail"`
 }
+
+// SeasonGroup agrupa episódios por temporada
+type SeasonGroup struct {
+    SeasonNumber int     `json:"season"`
+    Episodes     []Video `json:"episodes"`
+}

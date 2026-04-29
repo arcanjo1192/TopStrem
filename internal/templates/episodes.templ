@@ -1,0 +1,48 @@
+package templates
+
+import (
+    "topstrem/internal/models"
+)
+
+templ EpisodesPage(meta *models.Meta, seasons []models.SeasonGroup, lang string) {
+    <!DOCTYPE html>
+    <html lang={ lang }>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{ meta.Name } - { GetBrandName(lang) }</title>
+        <meta name="description" content={ meta.Description }>
+        <meta property="og:title" content={ meta.Name }>
+        <meta property="og:description" content={ meta.Description }>
+        <meta property="og:type" content="website">
+        <meta property="og:image" content={ meta.Poster }>
+        <link rel="canonical" href={ "https://www.topstrem.com.br/api/episodes/" + meta.ID }>
+        <link rel="stylesheet" href="/static/style.css">
+        <script src="/static/js/login.js"></script>
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    </head>
+    <body>
+        <div class="episodes-container">
+            <header class="episodes-header">
+                <img src={ meta.Poster } alt={ meta.Name } class="series-poster"/>
+                <div class="series-info">
+                    <h1>{ meta.Name }</h1>
+                    <p class="series-description">{ meta.Description }</p>
+                </div>
+            </header>
+            
+            <main class="episodes-main">
+                <div class="seasons-grid">
+                    for _, season := range seasons {
+                        <div class="season-card">
+                            <h2>Temporada { season.SeasonNumber }</h2>
+                            <!-- Episódios carregarão via API JSON -->
+                        </div>
+                    }
+                </div>
+            </main>
+        </div>
+    </body>
+    </html>
+}
