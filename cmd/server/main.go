@@ -110,6 +110,9 @@ func main() {
         c.File(filepath.Join(assetsDir, "callback.html"))
     })
 
+    // Sitemap
+    r.GET("/sitemap.xml", middleware.CORS(), rateLimiter.Middleware(), handlers.SitemapHandler(cachedApiClient))
+
     // ========== 6. ROTAS DINÂMICAS COM MIDDLEWARES ==========
     // A ordem de aplicação: primeiro rate limit, depois CSRF (se necessário), depois CORS
 

@@ -16,10 +16,11 @@ templ DetailPage(meta models.Meta, lang string) {
         <meta property="og:title" content={ meta.Name + " (" + meta.Year + ")" }>
         <meta property="og:description" content={ meta.Description }>
         <meta property="og:image" content={ meta.Poster }>
-        <meta property="og:type" content="video.movie">
+        <meta property="og:type" content={ GetOGType(meta.Type) }>
         <meta name="twitter:card" content="summary_large_image">
-        <link rel="alternate" href="https://www.topstrem.com.br/detail/{ meta.Type }/{ meta.ID }?lang=pt" hreflang="pt">
-        <link rel="alternate" href="https://www.topstrem.com.br/detail/{ meta.Type }/{ meta.ID }?lang=en" hreflang="en">
+        <link rel="canonical" href={ templ.SafeURL("https://www.topstrem.com.br/detail/" + meta.Type + "/" + meta.ID + "?lang=" + lang) }>
+        <link rel="alternate" href={ templ.SafeURL("https://www.topstrem.com.br/detail/" + meta.Type + "/" + meta.ID + "?lang=pt") } hreflang="pt">
+        <link rel="alternate" href={ templ.SafeURL("https://www.topstrem.com.br/detail/" + meta.Type + "/" + meta.ID + "?lang=en") } hreflang="en">
         <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <noscript><link rel="stylesheet" href="/static/style.css"></noscript>
 		<script src="https://unpkg.com/htmx.org@1.9.10"></script>

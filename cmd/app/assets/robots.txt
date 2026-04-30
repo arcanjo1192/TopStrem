@@ -5,5 +5,5 @@ Allow: /
 # Optional: block API endpoints to avoid unnecessary load
 Disallow: /api/
 
-# Sitemap location (if you create one later)
-# Sitemap: https://seusite.com/sitemap.xml
+# Sitemap location
+Sitemap: https://www.topstrem.com.br/sitemap.xml

@@ -538,6 +538,13 @@ func GetFavoritesMoviesText(lang string) string {
     return getText("favorites_movies", lang)
 }
 
+func GetOGType(mediaType string) string {
+    if mediaType == "series" {
+        return "video.tv_show"
+    }
+    return "video.movie"
+}
+
 func GetLogoutText(lang string) string {
     return getText("logout", lang)
 }
