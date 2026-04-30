@@ -108,18 +108,18 @@ const translations = {
                   lang === 'hi' ? 'देखा गया' :
                   lang === 'ko' ? '시청함' :
                   'Assistido',
-    markWatched: lang === 'en' ? 'Mark watched' :
-                 lang === 'es' ? 'Marcar como visto' :
-                 lang === 'fr' ? 'Marquer comme vu' :
-                 lang === 'de' ? 'Als gesehen markieren' :
-                 lang === 'it' ? 'Segna come visto' :
-                 lang === 'ja' ? '視聴済みにする' :
-                 lang === 'zh' ? '标记为已观看' :
-                 lang === 'ru' ? 'Отметить как просмотренное' :
-                 lang === 'ar' ? 'وضع علامة كمشاهدة' :
-                 lang === 'hi' ? 'देखा हुआ चिह्नित करें' :
-                 lang === 'ko' ? '시청한 것으로 표시' :
-                 'Já assisti',
+	markWatched: lang === 'en' ? 'Already watched' :
+				 lang === 'es' ? 'Ya visto' :
+				 lang === 'fr' ? 'Déjà vu' :
+				 lang === 'de' ? 'Schon gesehen' :
+				 lang === 'it' ? 'Già visto' :
+				 lang === 'ja' ? '既に視聴済み' :
+				 lang === 'zh' ? '已观看' :
+				 lang === 'ru' ? 'Уже просмотрено' :
+				 lang === 'ar' ? 'تمت المشاهدة' :
+				 lang === 'hi' ? 'पहले ही देखा गया' :
+				 lang === 'ko' ? '이미 시청함' :
+				 'Já assisti',
 	noStreams: lang === 'en' ? 'No streaming services found for this device.' :
 				lang === 'es' ? 'No se encontraron servicios de streaming para este dispositivo.' :
 				lang === 'fr' ? 'Aucun service de streaming trouvé pour cet appareil.' :
