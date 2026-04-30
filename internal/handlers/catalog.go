@@ -1,10 +1,10 @@
 package handlers
 
 import (
-    "encoding/json"
     "net/http"
     "strings"
 
+    "github.com/gin-gonic/gin"
     "topstrem/internal/api"
     "topstrem/internal/i18n"
     "topstrem/internal/models"
@@ -24,39 +24,38 @@ func getCatalogData(apiClient api.CinemetaClient, catalogType, catalogID string)
     return apiClient.GetCatalog(catalogType, catalogID)
 }
 
-func CatalogHandler(apiClient api.CinemetaClient) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        pathParts := strings.Split(r.URL.Path, "/")
+func CatalogHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        pathParts := strings.Split(c.Request.URL.Path, "/")
         if len(pathParts) < 4 {
-            http.NotFound(w, r)
+            c.AbortWithStatus(http.StatusNotFound)
             return
         }
         catalogType := pathParts[2]
         catalogID := pathParts[3]
 		
 		if catalogType != "movie" && catalogType != "series" {  
-			http.Error(w, "Tipo de catálogo inválido", http.StatusBadRequest)  
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tipo de catálogo inválido"})
 			return  
 		}  
 		if catalogID == "" {  
-			http.Error(w, "ID do catálogo não fornecido", http.StatusBadRequest)  
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID do catálogo não fornecido"})
 			return  
 		}
 
-        lang := i18n.DetectLanguage(r)
+        lang := i18n.DetectLanguage(c.Request)
 
         // Obter dados (reutilizado para HTML e JSON)
         catalog, err := getCatalogData(apiClient, catalogType, catalogID)
         if err != nil {
-            http.Error(w, "Erro ao carregar catálogo", http.StatusInternalServerError)
+            c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Erro ao carregar catálogo"})
             return
         }
 
         // Negociar formato de resposta
-        if IsJSONRequest(r) {
+        if IsJSONRequest(c.Request) {
             // Retornar JSON para aplicativos mobile/frontend
-            w.Header().Set("Content-Type", "application/json")
-            json.NewEncoder(w).Encode(CatalogDataResponse{
+            c.JSON(http.StatusOK, CatalogDataResponse{
                 Type:  catalogType,
                 ID:    catalogID,
                 Metas: catalog.Metas,
@@ -65,6 +64,6 @@ func CatalogHandler(apiClient api.CinemetaClient) http.HandlerFunc {
         }
 
         // Retornar HTML (template) para web
-        templates.CatalogPage(catalog.Metas, catalogType, catalogID, lang).Render(r.Context(), w)
+        templates.CatalogPage(catalog.Metas, catalogType, catalogID, lang).Render(c.Request.Context(), c.Writer)
     }
 }

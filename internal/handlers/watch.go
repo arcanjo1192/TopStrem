@@ -1,10 +1,10 @@
 package handlers
 
 import (
-    "encoding/json"
     "net/http"
     "strings"
 
+    "github.com/gin-gonic/gin"
     "topstrem/internal/api"
     "topstrem/internal/models"
     "topstrem/internal/templates"
@@ -30,37 +30,36 @@ func getWatchData(watchClient api.WatchHubClientInterface, mediaType, id string)
     return response.Streams, nil
 }
 
-func WatchHandler(watchClient api.WatchHubClientInterface) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        pathParts := strings.Split(r.URL.Path, "/")
+func WatchHandler(watchClient api.WatchHubClientInterface) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        pathParts := strings.Split(c.Request.URL.Path, "/")
         if len(pathParts) < 5 {
-            http.Error(w, "Requisição inválida", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Requisição inválida"})
             return
         }
         mediaType := pathParts[3]
         id := pathParts[4]
 		
 		if mediaType != "movie" && mediaType != "series" {  
-			http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)  
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tipo de mídia inválido"})
 			return  
 		}  
 		if id == "" {  
-			http.Error(w, "ID não fornecido", http.StatusBadRequest)  
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID não fornecido"})
 			return  
 		}
 
         // Obter dados (reutilizado para HTML e JSON)
         streams, err := getWatchData(watchClient, mediaType, id)
         if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
+            c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
             return
         }
 
         // Negociar formato de resposta
-        if IsJSONRequest(r) {
+        if IsJSONRequest(c.Request) {
             // Retornar JSON para aplicativos mobile/frontend
-            w.Header().Set("Content-Type", "application/json")
-            json.NewEncoder(w).Encode(WatchDataResponse{
+            c.JSON(http.StatusOK, WatchDataResponse{
                 MediaType: mediaType,
                 ID:        id,
                 Streams:   streams,
@@ -69,6 +68,6 @@ func WatchHandler(watchClient api.WatchHubClientInterface) http.HandlerFunc {
         }
 
         // Retornar HTML (template) para web
-        templates.WatchPage(streams, mediaType, id).Render(r.Context(), w)
+        templates.WatchPage(streams, mediaType, id).Render(c.Request.Context(), c.Writer)
     }
 }

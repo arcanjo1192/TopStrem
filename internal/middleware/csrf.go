@@ -6,31 +6,24 @@ import (
     "fmt"
     "net/http"
     "time"
+
+    "github.com/gin-gonic/gin"
 )
 
-func CSRF(next http.HandlerFunc) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
+func CSRF() gin.HandlerFunc {
+    return func(c *gin.Context) {
         // Para GET, HEAD, OPTIONS - gerar novo token
-        if r.Method == "GET" || r.Method == "HEAD" || r.Method == "OPTIONS" {
+        if c.Request.Method == "GET" || c.Request.Method == "HEAD" || c.Request.Method == "OPTIONS" {
             token := generateCSRFToken()
-            cookie := &http.Cookie{
-                Name:     "csrf_token",
-                Value:    token,
-                Path:     "/",
-                HttpOnly: true,
-                Secure:   true, // HTTPS em produção
-                SameSite: http.SameSiteStrictMode,
-                MaxAge:   3600, // 1 hora
-            }
-            http.SetCookie(w, cookie)
-            next(w, r)
+            c.SetCookie("csrf_token", token, 3600, "/", "", true, true)
+            c.Next()
             return
         }
 
         // Para POST, PUT, DELETE - validar token
-        cookieToken := getCSRFTokenFromCookie(r)
-        headerToken := r.Header.Get("X-CSRF-Token")
-        formToken := r.FormValue("_csrf_token")
+        cookieToken, _ := c.Cookie("csrf_token")
+        headerToken := c.GetHeader("X-CSRF-Token")
+        formToken := c.PostForm("csrf_token")
 
         // Aceitar token do header ou form
         token := headerToken
@@ -40,11 +33,11 @@ func CSRF(next http.HandlerFunc) http.HandlerFunc {
 
         // Validar que temos ambos os tokens e que são iguais
         if cookieToken == "" || token == "" || cookieToken != token {
-            http.Error(w, fmt.Sprintf("CSRF token invalid or missing"), http.StatusForbidden)
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("CSRF token invalid or missing")})
             return
         }
 
-        next(w, r)
+        c.Next()
     }
 }
 

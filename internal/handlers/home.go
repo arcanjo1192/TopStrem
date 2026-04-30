@@ -2,9 +2,11 @@ package handlers
 
 import (
     "net/http"
+
+    "github.com/gin-gonic/gin"
 )
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
+func HomeHandler(c *gin.Context) {
     // Redireciona para o catálogo de filmes populares
-    http.Redirect(w, r, "/catalog/movie/top", http.StatusSeeOther)
+    c.Redirect(http.StatusSeeOther, "/catalog/movie/top")
 }

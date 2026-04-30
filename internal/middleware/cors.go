@@ -4,6 +4,8 @@ import (
     "net/http"
     "os"
     "strings"
+
+    "github.com/gin-gonic/gin"
 )
 
 // allowedOrigins contém as origens CORS permitidas
@@ -34,25 +36,25 @@ func init() {
     }
 }
 
-func CORS(next http.HandlerFunc) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        origin := r.Header.Get("Origin")
+func CORS() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        origin := c.GetHeader("Origin")
         
         // Verificar se a origem é permitida
         if origin != "" && allowedOrigins[origin] {
-            w.Header().Set("Access-Control-Allow-Origin", origin)
-            w.Header().Set("Access-Control-Allow-Credentials", "true")
-            w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-            w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
-            w.Header().Set("Access-Control-Max-Age", "86400") // 24 horas
+            c.Header("Access-Control-Allow-Origin", origin)
+            c.Header("Access-Control-Allow-Credentials", "true")
+            c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+            c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token")
+            c.Header("Access-Control-Max-Age", "86400") // 24 horas
         }
         
         // Responder a preflight requests
-        if r.Method == "OPTIONS" {
-            w.WriteHeader(http.StatusOK)
+        if c.Request.Method == "OPTIONS" {
+            c.AbortWithStatus(http.StatusOK)
             return
         }
         
-        next(w, r)
+        c.Next()
     }
 }

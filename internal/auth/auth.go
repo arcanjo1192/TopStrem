@@ -2,11 +2,11 @@ package auth
 
 import (
     "context"
-    "encoding/json"
     "net/http"
     "os"
     "strings"
 
+    "github.com/gin-gonic/gin"
     "github.com/golang-jwt/jwt/v5"
     "golang.org/x/oauth2"
     "golang.org/x/oauth2/google"
@@ -81,83 +81,71 @@ func detectClientType(r *http.Request) ClientType {
     return ClientTypeWebBrowser
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(c *gin.Context) {
     url := authConfig.OAuth2Config.AuthCodeURL("random-state", oauth2.AccessTypeOffline)
-    clientType := detectClientType(r)
+    clientType := detectClientType(c.Request)
 
     switch clientType {
     case ClientTypeNativeApp:
         // App nativo: retorna JSON com URL de autenticação
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]interface{}{
-            "status": "ok",
+        c.JSON(http.StatusOK, map[string]interface{}{
+            "status":  "ok",
             "authUrl": url,
             "message": "Abra esta URL no seu navegador padrão para autenticar",
         })
         
     case ClientTypeCustomTab:
         // Custom Tab Android: retorna JSON com URL
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]interface{}{
-            "status": "ok",
+        c.JSON(http.StatusOK, map[string]interface{}{
+            "status":  "ok",
             "authUrl": url,
         })
         
     default: // ClientTypeWebBrowser
         // Web Browser: redireciona direto para Google
-        http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+        c.Redirect(http.StatusTemporaryRedirect, url)
     }
 }
 
-func CallbackHandler(w http.ResponseWriter, r *http.Request) {
-    code := r.URL.Query().Get("code")
+func CallbackHandler(c *gin.Context) {
+    code := c.Query("code")
     if code == "" {
-        http.Error(w, "Código de autorização não encontrado", http.StatusBadRequest)
+        c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Código de autorização não encontrado"})
         return
     }
     
     token, err := authConfig.OAuth2Config.Exchange(context.Background(), code)
     if err != nil {
-        http.Error(w, "Falha ao trocar o token", http.StatusInternalServerError)
+        c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Falha ao trocar o token"})
         return
     }
     
     idToken, ok := token.Extra("id_token").(string)
     if !ok {
-        http.Error(w, "ID Token não encontrado", http.StatusInternalServerError)
+        c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "ID Token não encontrado"})
         return
     }
     
     userInfo, err := validateGoogleIDToken(idToken)
     if err != nil {
-        http.Error(w, "ID Token inválido", http.StatusUnauthorized)
+        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "ID Token inválido"})
         return
     }
     
     jwtToken, err := generateJWT(userInfo.Email, userInfo.Name)
     if err != nil {
-        http.Error(w, "Erro ao gerar token de sessão", http.StatusInternalServerError)
+        c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Erro ao gerar token de sessão"})
         return
     }
     
     // Armazenar token em HttpOnly secure cookie (funciona para web e custom tab)
-    cookie := &http.Cookie{
-        Name:     "auth_token",
-        Value:    jwtToken,
-        Path:     "/",
-        HttpOnly: true,
-        Secure:   authConfig.CookieSecure, // true em produção
-        SameSite: http.SameSiteStrictMode,
-        MaxAge:   72 * 3600, // 72 horas
-    }
-    http.SetCookie(w, cookie)
+    c.SetCookie("auth_token", jwtToken, 72*3600, "/", "", authConfig.CookieSecure, true)
     
     // Detectar se veio de app nativo (via parâmetro na URL)
-    clientType := r.URL.Query().Get("client_type")
+    clientType := c.Query("client_type")
     
     if clientType == "native" {
         // App nativo: retornar HTML que passa token para app nativo via scheme customizado
-        w.Header().Set("Content-Type", "text/html; charset=utf-8")
         html := `<!DOCTYPE html>
 <html>
 <head>
@@ -193,21 +181,19 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
     </script>
 </body>
 </html>`
-        w.Write([]byte(html))
+        c.Header("Content-Type", "text/html; charset=utf-8")
+        c.String(http.StatusOK, html)
         return
     }
     
     // Web Browser: redirecionar para home (cookie já foi setado)
-    http.Redirect(w, r, "/", http.StatusFound)
+    c.Redirect(http.StatusFound, "/")
 }
 
-// MeHandler retorna dados do usuário autenticado a partir do JWT no cookie ou header
-func MeHandler(w http.ResponseWriter, r *http.Request) {
-    tokenString := getTokenFromRequest(r)
+func MeHandler(c *gin.Context) {
+    tokenString := getTokenFromRequest(c.Request)
     if tokenString == "" {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusUnauthorized)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Não autenticado"})
+        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Não autenticado"})
         return
     }
 
@@ -218,41 +204,28 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
     })
 
     if err != nil || !token.Valid {
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusUnauthorized)
-        json.NewEncoder(w).Encode(map[string]string{"error": "Token inválido"})
+        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token inválido"})
         return
     }
 
     // Retornar dados do usuário
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    c.JSON(http.StatusOK, map[string]interface{}{
         "email": claims["email"],
         "name":  claims["name"],
     })
 }
 
 // LogoutHandler limpa o cookie de autenticação (para web) ou retorna sucesso (para app nativo)
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method != "POST" {
-        http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+func LogoutHandler(c *gin.Context) {
+    if c.Request.Method != "POST" {
+        c.AbortWithStatusJSON(http.StatusMethodNotAllowed, gin.H{"error": "Método não permitido"})
         return
     }
 
     // Limpar cookie definindo MaxAge negativo (funciona para web)
-    cookie := &http.Cookie{
-        Name:     "auth_token",
-        Value:    "",
-        Path:     "/",
-        HttpOnly: true,
-        Secure:   authConfig.CookieSecure,
-        SameSite: http.SameSiteStrictMode,
-        MaxAge:   -1,
-    }
-    http.SetCookie(w, cookie)
+    c.SetCookie("auth_token", "", -1, "/", "", authConfig.CookieSecure, true)
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
+    c.JSON(http.StatusOK, gin.H{"status": "logged out"})
 }
 
 // getTokenFromRequest extrai o JWT do cookie ou do header Authorization

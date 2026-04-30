@@ -1,11 +1,11 @@
 package handlers
 
 import (
-    "encoding/json"
     "net/http"
     "sort"
     "strings"
 
+    "github.com/gin-gonic/gin"
     "topstrem/internal/api"
     "topstrem/internal/models"
     "topstrem/internal/templates"
@@ -86,22 +86,22 @@ func getEpisodesData(id string, lang string, apiClient api.CinemetaClient, tmdbC
     return seasons, meta, nil
 }
 
-func EpisodesHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        pathParts := strings.Split(r.URL.Path, "/")
+func EpisodesHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        pathParts := strings.Split(c.Request.URL.Path, "/")
         if len(pathParts) < 4 {
-            http.Error(w, "ID não fornecido", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID não fornecido"})
             return
         }
         id := pathParts[3]
         if !strings.HasPrefix(id, "tt") || len(id) < 3 {
-            http.Error(w, "ID IMDb inválido", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID IMDb inválido"})
             return
         }
 
-        lang := r.URL.Query().Get("lang")
+        lang := c.Query("lang")
         if len(lang) > 0 && len(lang) < 2 {
-            http.Error(w, "Código de idioma inválido", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Código de idioma inválido"})
             return
         }
         if lang == "" {
@@ -111,15 +111,14 @@ func EpisodesHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInte
         // Obter dados (reutilizado para HTML e JSON)
         seasons, meta, err := getEpisodesData(id, lang, apiClient, tmdbClient)
         if err != nil {
-            http.Error(w, "Série não encontrada", http.StatusNotFound)
+            c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Série não encontrada"})
             return
         }
 
         // Negociar formato de resposta
-        if IsJSONRequest(r) {
+        if IsJSONRequest(c.Request) {
             // Retornar JSON para aplicativos mobile/frontend
-            w.Header().Set("Content-Type", "application/json")
-            json.NewEncoder(w).Encode(EpisodesDataResponse{
+            c.JSON(http.StatusOK, EpisodesDataResponse{
                 SeriesID: id,
                 Seasons:  seasons,
             })
@@ -128,6 +127,6 @@ func EpisodesHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInte
 
         // Retornar HTML (template) para web
         // Passar meta e seasons para o template
-        templates.EpisodesPage(meta, seasons, lang).Render(r.Context(), w)
+        templates.EpisodesPage(meta, seasons, lang).Render(c.Request.Context(), c.Writer)
     }
 }

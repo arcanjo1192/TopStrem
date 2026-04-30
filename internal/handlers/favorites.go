@@ -3,24 +3,26 @@ package handlers
 import (
     "net/http"
     "strings"
+
+    "github.com/gin-gonic/gin"
     "topstrem/internal/api"
     "topstrem/internal/i18n"
     "topstrem/internal/models"
     "topstrem/internal/templates"
 )
 
-func FavoritesHandler(apiClient api.CinemetaClient) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        lang := i18n.DetectLanguage(r)
-        catalogType := r.URL.Query().Get("type") // "movie" ou "series"
-        idsParam := r.URL.Query().Get("ids")      // ex: "tt123,tt456"
+func FavoritesHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        lang := i18n.DetectLanguage(c.Request)
+        catalogType := c.Query("type") // "movie" ou "series"
+        idsParam := c.Query("ids")      // ex: "tt123,tt456"
 
         if catalogType != "movie" && catalogType != "series" {
             catalogType = "movie"
         }
         if idsParam == "" {
             // Sem IDs, exibe grade vazia
-            templates.CatalogPage([]models.CatalogMeta{}, catalogType, "favorites", lang).Render(r.Context(), w)
+            templates.CatalogPage([]models.CatalogMeta{}, catalogType, "favorites", lang).Render(c.Request.Context(), c.Writer)
             return
         }
 
@@ -29,7 +31,7 @@ func FavoritesHandler(apiClient api.CinemetaClient) http.HandlerFunc {
 		for _, id := range ids {  
 			id = strings.TrimSpace(id)  
 			if !strings.HasPrefix(id, "tt") || len(id) < 3 {  
-				http.Error(w, "ID IMDb inválido nos favoritos: "+id, http.StatusBadRequest)  
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID IMDb inválido nos favoritos: " + id})
 				return  
 			}  
 		}
@@ -54,6 +56,6 @@ func FavoritesHandler(apiClient api.CinemetaClient) http.HandlerFunc {
         }
 
         // Renderiza a página com os favoritos
-        templates.CatalogPage(metas, catalogType, "favorites", lang).Render(r.Context(), w)
+        templates.CatalogPage(metas, catalogType, "favorites", lang).Render(c.Request.Context(), c.Writer)
     }
 }

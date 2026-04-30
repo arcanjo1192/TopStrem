@@ -2,12 +2,12 @@ package handlers
 
 import (
     "context"
-    "encoding/json"
     "errors"
     "net/http"
     "strings"
     "time"
 
+    "github.com/gin-gonic/gin"
     "golang.org/x/sync/errgroup"
     "topstrem/internal/api"
     "topstrem/internal/i18n"
@@ -144,43 +144,42 @@ func getDetailData(ctx context.Context, mediaType, id string, apiClient api.Cine
     return meta, nil
 }
 
-func DetailHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        pathParts := strings.Split(r.URL.Path, "/")
+func DetailHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterface) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        pathParts := strings.Split(c.Request.URL.Path, "/")
         if len(pathParts) < 4 {
-            http.NotFound(w, r)
+            c.AbortWithStatus(http.StatusNotFound)
             return
         }
         mediaType := pathParts[2]
         id := pathParts[3] // IMDb ID, ex: tt0133093
 
         if mediaType != "movie" && mediaType != "series" {
-            http.Error(w, "Tipo de mídia inválido", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tipo de mídia inválido"})
             return
         }
         if !strings.HasPrefix(id, "tt") || len(id) < 3 {
-            http.Error(w, "ID IMDb inválido", http.StatusBadRequest)
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID IMDb inválido"})
             return
         }
 
-        lang := i18n.DetectLanguage(r)
+        lang := i18n.DetectLanguage(c.Request)
 
         // Contexto com timeout global (ex: 5 segundos)
-        ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+        ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
         defer cancel()
 
         // Obter dados enriquecidos (reutilizado para HTML e JSON)
         meta, err := getDetailData(ctx, mediaType, id, apiClient, tmdbClient)
         if err != nil {
-            http.Error(w, "Título não encontrado", http.StatusNotFound)
+            c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Título não encontrado"})
             return
         }
 
         // Negociar formato de resposta
-        if IsJSONRequest(r) {
+        if IsJSONRequest(c.Request) {
             // Retornar JSON para aplicativos mobile/frontend
-            w.Header().Set("Content-Type", "application/json")
-            json.NewEncoder(w).Encode(DetailDataResponse{
+            c.JSON(http.StatusOK, DetailDataResponse{
                 MediaType: mediaType,
                 ID:        id,
                 Meta:      *meta,
@@ -189,6 +188,6 @@ func DetailHandler(apiClient api.CinemetaClient, tmdbClient api.TMDBClientInterf
         }
 
         // Retornar HTML (template) para web
-        templates.DetailPage(*meta, lang).Render(r.Context(), w)
+        templates.DetailPage(*meta, lang).Render(c.Request.Context(), c.Writer)
     }
 }
