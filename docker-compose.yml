@@ -16,6 +16,9 @@ services:
       - ENVIRONMENT=${ENVIRONMENT}
       - REDIS_ADDR=${REDIS_ADDR}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - BOLT_DB_PATH=/app/data/topstrem.db
+    volumes:
+      - topstrem-data:/app/data
     depends_on:
       - redis
 
@@ -32,3 +35,7 @@ networks:
     driver: bridge
   docker_default:
     external: true
+
+volumes:
+  topstrem-data:
+    driver: local

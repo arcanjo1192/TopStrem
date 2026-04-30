@@ -788,23 +788,35 @@ main {
 
 /* Botão de episódio assistido (watched check) */
 .watched-check {
-    background: none;
-    border: none;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.25);
+    border-radius: 999px;
     cursor: pointer;
-    padding: 0 4px;
+    padding: 4px 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     color: #ffc107;
-    transition: transform 0.1s;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: transform 0.1s, background-color 0.2s, border-color 0.2s;
 }
 .watched-check svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: block;
 }
+.watched-check .watched-text {
+    white-space: nowrap;
+}
+.watched-check.watched {
+    background: rgba(76, 175, 80, 0.16);
+    border-color: rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+}
 .watched-check:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
 .season-progress-fixed {

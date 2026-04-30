@@ -2,14 +2,17 @@ package auth
 
 import (
     "context"
+    "errors"
     "net/http"
     "os"
     "strings"
+    "time"
 
     "github.com/gin-gonic/gin"
     "github.com/golang-jwt/jwt/v5"
     "golang.org/x/oauth2"
     "golang.org/x/oauth2/google"
+    "topstrem/internal/storage"
 )
 
 // ClientType define o tipo de cliente que se autentica
@@ -31,6 +34,11 @@ type AuthConfig struct {
 }
 
 var authConfig AuthConfig
+var authStore *storage.Storage
+
+func SetStorage(store *storage.Storage) {
+    authStore = store
+}
 
 func InitAuth(clientID, clientSecret, redirectURL string) {
     // Validar JWT_SECRET
@@ -136,6 +144,14 @@ func CallbackHandler(c *gin.Context) {
     if err != nil {
         c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Erro ao gerar token de sessão"})
         return
+    }
+
+    if authStore != nil {
+        authStore.SaveUser(storage.UserProfile{
+            Email:     userInfo.Email,
+            Name:      userInfo.Name,
+            LastLogin: time.Now().UTC(),
+        })
     }
     
     // Armazenar token em HttpOnly secure cookie (funciona para web e custom tab)
@@ -246,4 +262,25 @@ func getTokenFromRequest(r *http.Request) string {
     }
     
     return ""
+}
+
+func GetEmailFromRequest(r *http.Request) (string, error) {
+    tokenString := getTokenFromRequest(r)
+    if tokenString == "" {
+        return "", errors.New("token não encontrado")
+    }
+
+    claims := jwt.MapClaims{}
+    token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+        return authConfig.JWTSecret, nil
+    })
+    if err != nil || !token.Valid {
+        return "", errors.New("token inválido")
+    }
+
+    email, ok := claims["email"].(string)
+    if !ok || email == "" {
+        return "", errors.New("email não encontrado no token")
+    }
+    return email, nil
 }

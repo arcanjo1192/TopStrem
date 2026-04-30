@@ -10,11 +10,12 @@ import (
 
     "github.com/gin-gonic/gin"
 
-    "topstrem/internal/cache"
     "topstrem/internal/api"
     "topstrem/internal/auth"
+    "topstrem/internal/cache"
     "topstrem/internal/handlers"
     "topstrem/internal/middleware"
+    "topstrem/internal/storage"
 )
 
 func main() {
@@ -25,6 +26,27 @@ func main() {
         redisAddr = "localhost:6379"  
     }  
     redisCache := cache.NewRedisCache(redisAddr) 
+
+    // Inicializar Bolt DB para login/favoritos
+    boltPath := os.Getenv("BOLT_DB_PATH")
+    if boltPath == "" {
+        homeDir, err := os.UserHomeDir()
+        if err == nil {
+            boltDir := filepath.Join(homeDir, ".topstrem")
+            if mkdirErr := os.MkdirAll(boltDir, 0o700); mkdirErr == nil {
+                boltPath = filepath.Join(boltDir, "topstrem.db")
+            }
+        }
+        if boltPath == "" {
+            boltPath = filepath.Join(".", "topstrem.db")
+        }
+    }
+    boltStore, err := storage.Open(boltPath)
+    if err != nil {
+        panic(fmt.Sprintf("Failed to open Bolt DB: %v", err))
+    }
+    defer boltStore.Close()
+    auth.SetStorage(boltStore)
 
     // ========== 1. INICIALIZAÇÃO DOS CLIENTES ==========
     apiClient := api.NewClient()
@@ -56,13 +78,17 @@ func main() {
 
     // ========== 3. RATE LIMITERS ==========
     rateLimiter := middleware.NewRateLimiter(100, time.Minute)   // rotas gerais
-    apiRateLimiter := middleware.NewRateLimiter(30, time.Minute) // rotas de API
+    apiRateLimiter := middleware.NewRateLimiter(60, time.Minute) // rotas de API
 
     // ========== 4. INICIALIZAÇÃO DO GIN ==========
-    r := gin.Default()
+    gin.SetMode(gin.ReleaseMode)
+    r := gin.New()
+    if err := r.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
+        panic(fmt.Sprintf("Failed to set trusted proxies: %v", err))
+    }
 
     // Middleware global
-    r.Use(gin.Recovery())
+    r.Use(gin.Logger(), gin.Recovery())
 
     // ========== 5. ARQUIVOS ESTÁTICOS (COM GZIP E CACHE) ==========
     staticDir := filepath.Join(assetsDir, "static")
@@ -100,6 +126,10 @@ func main() {
     // Endpoints de API com rate limit mais restrito
     r.GET("/api/episodes/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.EpisodesHandler(cachedApiClient, cachedTmdbClient))
     r.GET("/api/watch/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchHandler(cachedWatchClient))
+    r.GET("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.FavoritesAPIHandler(boltStore))
+    r.POST("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateFavoritesAPIHandler(boltStore))
+    r.GET("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchedEpisodesAPIHandler(boltStore))
+    r.POST("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateWatchedEpisodesAPIHandler(boltStore))
 
     // Autenticação
     r.GET("/auth/login", middleware.CORS(), rateLimiter.Middleware(), auth.LoginHandler)

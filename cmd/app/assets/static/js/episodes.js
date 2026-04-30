@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	let prefetchedData = null;   // dados pré-carregados
 	let prefetchPromise = null;   // promise do prefetch
 	let fixedProgressDiv = null;
+	let watchedCache = [];
 
 	// ========== Funções para episódios assistidos ==========
 	function getWatchedEpisodesKey() {
@@ -20,7 +21,18 @@ document.addEventListener('DOMContentLoaded', function() {
 		return `topstrem_watched_episodes_${email}`;
 	}
 
+	async function getEpisodeAuthHeader() {
+		if (typeof getAuthHeader === 'function') {
+			return await getAuthHeader();
+		}
+		return {};
+	}
+
 	function getWatchedEpisodes() {
+		if (isUserLoggedIn()) {
+			return watchedCache;
+		}
+
 		const key = getWatchedEpisodesKey();
 		if (!key) return [];
 		const stored = localStorage.getItem(key);
@@ -28,11 +40,73 @@ document.addEventListener('DOMContentLoaded', function() {
 	}
 
 	function saveWatchedEpisodes(episodes) {
+		if (isUserLoggedIn()) {
+			watchedCache = episodes || [];
+			return;
+		}
+
 		const key = getWatchedEpisodesKey();
 		if (key) localStorage.setItem(key, JSON.stringify(episodes));
 	}
 
-	function toggleWatchedEpisode(episodeId) {
+	async function fetchWatchedEpisodes() {
+		if (!isUserLoggedIn()) {
+			return [];
+		}
+
+		try {
+			const headers = await getEpisodeAuthHeader();
+			const response = await fetch('/api/watched-episodes', {
+				method: 'GET',
+				headers,
+				credentials: 'same-origin'
+			});
+			if (!response.ok) {
+				return [];
+			}
+			const data = await response.json();
+			watchedCache = Array.isArray(data.watchedEpisodes) ? data.watchedEpisodes : [];
+			return watchedCache;
+		} catch (err) {
+			console.error('Erro ao buscar episódios assistidos do servidor:', err);
+			return [];
+		}
+	}
+
+	async function updateWatchedEpisodeOnServer(episodeId, action) {
+		if (!isUserLoggedIn()) {
+			return false;
+		}
+
+		try {
+			const headers = await getEpisodeAuthHeader();
+			headers['Content-Type'] = 'application/json';
+			const response = await fetch('/api/watched-episodes', {
+				method: 'POST',
+				headers,
+				credentials: 'same-origin',
+				body: JSON.stringify({ action, episodeId })
+			});
+			if (!response.ok) {
+				return false;
+			}
+			const data = await response.json();
+			watchedCache = Array.isArray(data.watchedEpisodes) ? data.watchedEpisodes : watchedCache;
+			return watchedCache.includes(episodeId);
+		} catch (err) {
+			console.error('Erro ao atualizar episódio assistido no servidor:', err);
+			return false;
+		}
+	}
+
+	async function toggleWatchedEpisode(episodeId) {
+		if (isUserLoggedIn()) {
+			const isWatched = watchedCache.includes(episodeId);
+			const action = isWatched ? 'remove' : 'add';
+			const result = await updateWatchedEpisodeOnServer(episodeId, action);
+			return result;
+		}
+
 		let watched = getWatchedEpisodes();
 		if (watched.includes(episodeId)) {
 			watched = watched.filter(id => id !== episodeId);
@@ -79,10 +153,13 @@ document.addEventListener('DOMContentLoaded', function() {
 	prefetchEpisodes();
 
 	// ========== ABERTURA DA SIDEBAR ==========
-	openBtn.addEventListener('click', function() {
+	openBtn.addEventListener('click', async function() {
 		sidebar.classList.add('open');
 		
 		if (!loaded) {
+			if (isUserLoggedIn()) {
+				await fetchWatchedEpisodes();
+			}
 			// Mostra loading imediato (caso o prefetch ainda não tenha terminado)
 			contentDiv.innerHTML = '<div class="loading">' + translations.loading + '</div>';
 			
@@ -217,9 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
 				let checkButton = '';
 				if (isLoggedLocal && !isFuture) {
 					const isWatched = watchedEpisodes.includes(ep.id);
-					const checkedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
-					const uncheckedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-					checkButton = `<button class="watched-check" data-ep-id="${ep.id}">${isWatched ? checkedSvg : uncheckedSvg}</button>`;
+					const checkedSvg = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+					const uncheckedSvg = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
+					checkButton = `<button class="watched-check${isWatched ? ' watched' : ''}" data-ep-id="${ep.id}" aria-pressed="${isWatched}" title="${isWatched ? translations.watchedLabel : translations.markWatched}"><span class="watched-icon">${isWatched ? checkedSvg : uncheckedSvg}</span><span class="watched-text">${isWatched ? translations.watchedLabel : translations.markWatched}</span></button>`;
 				}
 
 				const li = document.createElement('li');
@@ -284,19 +361,20 @@ document.addEventListener('DOMContentLoaded', function() {
 			if (isLoggedLocal) {
 				const checkButtons = container.querySelectorAll('.watched-check');
 				checkButtons.forEach(btn => {
-					btn.addEventListener('click', (e) => {
+					btn.addEventListener('click', async (e) => {
 						e.stopPropagation();
 						const epId = btn.dataset.epId;
-						const newState = toggleWatchedEpisode(epId);
-						const checkedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
-						const uncheckedSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-						btn.innerHTML = newState ? checkedSvg : uncheckedSvg;
+						const newState = await toggleWatchedEpisode(epId);
+						const checkedSvg = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+						const uncheckedSvg = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
+						btn.classList.toggle('watched', newState);
+						btn.setAttribute('aria-pressed', newState);
+						btn.title = newState ? translations.watchedLabel : translations.markWatched;
+						btn.innerHTML = `<span class="watched-icon">${newState ? checkedSvg : uncheckedSvg}</span><span class="watched-text">${newState ? translations.watchedLabel : translations.markWatched}</span>`;
 						updateFixedProgress(seasonIndex);
 					});
 				});
 			}
-
-			updateFixedProgress(seasonIndex);
 		}
 
 		selectElement.addEventListener('change', (e) => {

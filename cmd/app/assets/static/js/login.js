@@ -8,6 +8,8 @@ let currentUser = {
     token: null // para app nativo
 };
 
+let userFavorites = [];
+
 // Detectar tipo de client
 let clientType = {
     isNativeApp: window.isMobileApp === true || !!window.getAuthToken,
@@ -62,10 +64,12 @@ async function fetchCurrentUser() {
             currentUser.email = user.email;
             currentUser.name = user.name;
             currentUser.isLoggedIn = true;
+            await syncFavorites();
         } else {
             currentUser.email = null;
             currentUser.name = null;
             currentUser.isLoggedIn = false;
+            userFavorites = [];
             if (clientType.isNativeApp) {
                 await storeToken(null); // limpar token inválido
             }
@@ -197,14 +201,45 @@ function setupMobileLogin() {
     }
 }
 
-// ==================== Watchlist (mantém localStorage, mas baseado no email) ====================
+// ==================== Watchlist (server-side favorites quando logado) ====================
 function getWatchlistKey() {
     const email = getCurrentUserEmail();
     if (!email) return null;
     return `topstrem_watchlist_${email}`;
 }
 
+async function fetchFavorites() {
+    if (!isUserLoggedIn()) {
+        return [];
+    }
+
+    try {
+        const headers = await getAuthHeader();
+        const response = await fetch('/api/favorites', {
+            method: 'GET',
+            headers,
+            credentials: 'same-origin'
+        });
+        if (!response.ok) {
+            return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data.favorites) ? data.favorites : [];
+    } catch (err) {
+        console.error('Erro ao buscar favoritos do servidor:', err);
+        return [];
+    }
+}
+
+async function syncFavorites() {
+    userFavorites = await fetchFavorites();
+}
+
 function getWatchlist() {
+    if (isUserLoggedIn()) {
+        return userFavorites;
+    }
+
     const key = getWatchlistKey();
     if (!key) return [];
     const stored = localStorage.getItem(key);
@@ -212,6 +247,11 @@ function getWatchlist() {
 }
 
 function saveWatchlist(list) {
+    if (isUserLoggedIn()) {
+        userFavorites = list;
+        return;
+    }
+
     const key = getWatchlistKey();
     if (!key) return;
     localStorage.setItem(key, JSON.stringify(list));
@@ -222,7 +262,37 @@ function isInWatchlist(id) {
     return list.some(item => item.id === id);
 }
 
-function addToWatchlist(item) {
+async function updateFavoritesOnServer(item, action) {
+    try {
+        const headers = await getAuthHeader();
+        headers['Content-Type'] = 'application/json';
+        const response = await fetch('/api/favorites', {
+            method: 'POST',
+            headers,
+            credentials: 'same-origin',
+            body: JSON.stringify({ action, item })
+        });
+        if (!response.ok) {
+            return false;
+        }
+        const data = await response.json();
+        userFavorites = Array.isArray(data.favorites) ? data.favorites : userFavorites;
+        return true;
+    } catch (err) {
+        console.error('Erro ao atualizar favoritos no servidor:', err);
+        return false;
+    }
+}
+
+async function addToWatchlist(item) {
+    if (isUserLoggedIn()) {
+        const added = await updateFavoritesOnServer(item, 'add');
+        if (added && !userFavorites.some(i => i.id === item.id)) {
+            userFavorites.push(item);
+        }
+        return added;
+    }
+
     const list = getWatchlist();
     if (!list.some(i => i.id === item.id)) {
         list.push(item);
@@ -232,20 +302,26 @@ function addToWatchlist(item) {
     return false;
 }
 
-function removeFromWatchlist(id) {
+async function removeFromWatchlist(id) {
+    if (isUserLoggedIn()) {
+        const removed = await updateFavoritesOnServer({ id }, 'remove');
+        if (removed) {
+            userFavorites = userFavorites.filter(item => item.id !== id);
+        }
+        return removed;
+    }
+
     let list = getWatchlist();
     const newList = list.filter(item => item.id !== id);
     saveWatchlist(newList);
     return newList.length !== list.length;
 }
 
-function toggleWatchlist(item) {
+async function toggleWatchlist(item) {
     if (isInWatchlist(item.id)) {
-        removeFromWatchlist(item.id);
-        return false;
+        return !(await removeFromWatchlist(item.id));
     } else {
-        addToWatchlist(item);
-        return true;
+        return await addToWatchlist(item);
     }
 }
 
@@ -257,18 +333,102 @@ function updateWatchlistButton(btn, saved) {
     }
 }
 
-// ==================== Episódios assistidos (localStorage baseado no email) ====================
+// ==================== Episódios assistidos (servidor + localStorage fallback) ====================
+let watchedEpisodesCache = null;
+
 function getWatchedEpisodesKey() {
     const email = getCurrentUserEmail();
     if (!email) return null;
     return `topstrem_watched_episodes_${email}`;
 }
 
-function getWatchedEpisodes() {
+async function fetchWatchedEpisodesFromServer() {
+    if (!isUserLoggedIn()) {
+        return [];
+    }
+
+    if (watchedEpisodesCache !== null) {
+        return watchedEpisodesCache;
+    }
+
+    try {
+        const headers = await getAuthHeader();
+        const response = await fetch('/api/watched-episodes', {
+            method: 'GET',
+            headers,
+            credentials: 'same-origin'
+        });
+        if (!response.ok) {
+            return [];
+        }
+        const data = await response.json();
+        watchedEpisodesCache = Array.isArray(data.watchedEpisodes) ? data.watchedEpisodes : [];
+        return watchedEpisodesCache;
+    } catch (err) {
+        console.error('Erro ao buscar episódios assistidos do servidor:', err);
+        return [];
+    }
+}
+
+async function getWatchedEpisodes() {
+    if (isUserLoggedIn()) {
+        if (watchedEpisodesCache !== null) {
+            return watchedEpisodesCache;
+        }
+        return await fetchWatchedEpisodesFromServer();
+    }
+
     const key = getWatchedEpisodesKey();
     if (!key) return [];
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : [];
+}
+
+function saveWatchedEpisodes(episodes) {
+    if (isUserLoggedIn()) {
+        watchedEpisodesCache = episodes || [];
+        return;
+    }
+
+    const key = getWatchedEpisodesKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(episodes));
+}
+
+async function toggleWatchedEpisode(episodeId) {
+    if (isUserLoggedIn()) {
+        const watched = watchedEpisodesCache !== null ? watchedEpisodesCache : await fetchWatchedEpisodesFromServer();
+        const isWatched = watched.includes(episodeId);
+        const action = isWatched ? 'remove' : 'add';
+        try {
+            const headers = await getAuthHeader();
+            headers['Content-Type'] = 'application/json';
+            const response = await fetch('/api/watched-episodes', {
+                method: 'POST',
+                headers,
+                credentials: 'same-origin',
+                body: JSON.stringify({ action, episodeId })
+            });
+            if (!response.ok) {
+                return isWatched;
+            }
+            const data = await response.json();
+            watchedEpisodesCache = Array.isArray(data.watchedEpisodes) ? data.watchedEpisodes : watchedEpisodesCache;
+            return watchedEpisodesCache.includes(episodeId);
+        } catch (err) {
+            console.error('Erro ao atualizar episódio assistido no servidor:', err);
+            return isWatched;
+        }
+    }
+
+    let watched = await getWatchedEpisodes();
+    if (watched.includes(episodeId)) {
+        watched = watched.filter(id => id !== episodeId);
+    } else {
+        watched.push(episodeId);
+    }
+    saveWatchedEpisodes(watched);
+    return watched.includes(episodeId);
 }
 
 // ==================== Notificações ====================
@@ -317,7 +477,7 @@ async function loadNotifications() {
     const seriesList = watchlist.filter(item => item.type === 'series');
     if (seriesList.length === 0) return [];
 
-    const watchedEpisodes = getWatchedEpisodes();
+    const watchedEpisodes = await getWatchedEpisodes();
 
     const allEpisodes = [];
     for (const series of seriesList) {
@@ -447,7 +607,7 @@ async function handleWatchlistClick(e) {
     }
 
     const item = { id, type, name, year };
-    const saved = toggleWatchlist(item);
+    const saved = await toggleWatchlist(item);
     updateWatchlistButton(btn, saved);
     await refreshNotifications();
 }
@@ -473,11 +633,7 @@ function attachFavoritesListeners() {
 
     if (favSeriesBtn && !favSeriesBtn.hasAttribute('data-listener')) {
         favSeriesBtn.addEventListener('click', () => {
-            const email = getCurrentUserEmail();
-            if (!email) return;
-            const key = `topstrem_watchlist_${email}`;
-            const stored = localStorage.getItem(key);
-            const watchlist = stored ? JSON.parse(stored) : [];
+            const watchlist = getWatchlist();
             const seriesIds = watchlist.filter(item => item.type === 'series').map(item => item.id);
             if (seriesIds.length === 0) {
                 alert('Nenhuma série favorita encontrada.');
@@ -491,11 +647,7 @@ function attachFavoritesListeners() {
 
     if (favMovieBtn && !favMovieBtn.hasAttribute('data-listener')) {
         favMovieBtn.addEventListener('click', () => {
-            const email = getCurrentUserEmail();
-            if (!email) return;
-            const key = `topstrem_watchlist_${email}`;
-            const stored = localStorage.getItem(key);
-            const watchlist = stored ? JSON.parse(stored) : [];
+            const watchlist = getWatchlist();
             const movieIds = watchlist.filter(item => item.type === 'movie').map(item => item.id);
             if (movieIds.length === 0) {
                 alert('Nenhum filme favorito encontrado.');
