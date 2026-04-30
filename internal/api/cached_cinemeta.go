@@ -41,7 +41,7 @@ func (c *CachedCinemetaClient) GetCatalog(catalogType, catalogID string) (*model
     return data, nil  
 }  
   
-func (c *CachedCinemetaClient) GetMeta(mediaType, id string) (*models.Meta, error) {  
+func (c *CachedCinemetaClient) GetMeta(mediaType, id string) (*models.Meta, error) {
     ctx := context.Background()  
     key := fmt.Sprintf("cinemeta:meta:%s:%s", mediaType, id)  
       

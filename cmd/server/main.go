@@ -131,6 +131,7 @@ func main() {
     r.GET("/api/watch/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchHandler(cachedWatchClient))
     r.GET("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.FavoritesAPIHandler(boltStore))
     r.POST("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateFavoritesAPIHandler(boltStore))
+    r.GET("/api/search", middleware.CORS(), apiRateLimiter.Middleware(), handlers.SearchHandler(cachedApiClient))
     r.GET("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchedEpisodesAPIHandler(boltStore))
     r.POST("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateWatchedEpisodesAPIHandler(boltStore))
 

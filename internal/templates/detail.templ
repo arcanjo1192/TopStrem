@@ -23,6 +23,8 @@ templ DetailPage(meta models.Meta, lang string) {
         <link rel="alternate" href={ templ.SafeURL("https://www.topstrem.com.br/detail/" + meta.Type + "/" + meta.ID + "?lang=en") } hreflang="en">
         <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <noscript><link rel="stylesheet" href="/static/style.css"></noscript>
+        <script src="/static/js/login.js"></script>
+        <script src="/static/js/search.js"></script>
 		<script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     </head>
@@ -37,6 +39,15 @@ templ DetailPage(meta models.Meta, lang string) {
 					</svg>
 				</button>
 				<h1><a href="/">{ GetBrandName(lang) }</a></h1>
+				<button id="search-toggle" class="search-toggle-btn" aria-label="Buscar">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+						<line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+					</svg>
+				</button>
+				<div id="search-bar" class="search-bar">
+					<input id="cinemeta-search-input" type="search" placeholder="Buscar títulos..." aria-label="Buscar" autocomplete="off">
+				</div>
 			</div>
 			<div class="nav-and-auth">
 				<nav>
@@ -90,6 +101,7 @@ templ DetailPage(meta models.Meta, lang string) {
 				</div>
 			</div>
 		</header>
+        <div id="search-results" class="search-results" style="display:none;"></div>
         <div id="detail-bg" class="detail-container" data-background={ meta.Background } style="background-color: #121212;">
             <div class="detail-overlay">
                 <div class="detail-poster">
