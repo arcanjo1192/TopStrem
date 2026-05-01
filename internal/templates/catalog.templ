@@ -97,11 +97,11 @@ templ CatalogPage(metas []models.CatalogMeta, catalogType string, catalogID stri
         <div id="search-results" class="search-results" style="display:none;"></div>
         <main>
 			<div class="catalog-filter">
-				<span>Categoria</span>
+				<span>{ GetCategoryText(lang) }</span>
 				<select id="category-select" onchange="filterByCategory()">
-					<option value="">Todas</option>
+					<option value="">{ GetAllText(lang) }</option>
 					for _, genre := range genres {
-						<option value={ genre } selected?={ genre == selectedCategory }>{ genre }</option>
+						<option value={ genre } selected?={ genre == selectedCategory }>{ TranslateGenre(genre, lang) }</option>
 					}
 				</select>
 			</div>

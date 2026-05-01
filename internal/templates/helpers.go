@@ -398,7 +398,6 @@ var translations = map[string]map[string]string{
         "hi": "लॉग आउट",
         "ko": "로그아웃",
     },
-    // NOVA CHAVE: placeholder da busca
     "search_placeholder": {
         "pt": "Pesquisar filmes ou séries...",
         "en": "Search movies or series...",
@@ -413,6 +412,34 @@ var translations = map[string]map[string]string{
         "hi": "फिल्में या सीरीज खोजें...",
         "ko": "영화 또는 시리즈 검색...",
     },
+	"Category": {
+		"pt": "Categoria",
+		"en": "Category",
+		"es": "Categoría",
+		"fr": "Catégorie",
+		"de": "Kategorie",
+		"it": "Categoria",
+		"ja": "カテゴリ",
+		"zh": "类别",
+		"ru": "Категория",
+		"ar": "الفئة",
+		"hi": "श्रेणी",
+		"ko": "범주",
+	},
+	"All": {
+		"pt": "Todas",
+		"en": "All",
+		"es": "Todas",
+		"fr": "Toutes",
+		"de": "Alle",
+		"it": "Tutte",
+		"ja": "すべて",
+		"zh": "全部",
+		"ru": "Все",
+		"ar": "الكل",
+		"hi": "सभी",
+		"ko": "모두",
+	},
 }
 
 func getText(key, lang string) string {
@@ -551,4 +578,120 @@ func GetLogoutText(lang string) string {
 
 func GetSearchPlaceholder(lang string) string {
     return getText("search_placeholder", lang)
+}
+
+func GetCategoryText(lang string) string {
+    return getText("Category", lang)
+}
+
+func GetAllText(lang string) string {
+    return getText("All", lang)
+}
+
+var genreTranslations = map[string]map[string]string{
+    "Action": {
+        "pt": "Ação", "en": "Action", "es": "Acción", "fr": "Action",
+        "de": "Action", "it": "Azione", "ja": "アクション", "zh": "动作",
+        "ru": "Боевик", "ar": "حركة", "hi": "एक्शन", "ko": "액션",
+    },
+    "Adventure": {
+        "pt": "Aventura", "en": "Adventure", "es": "Aventura", "fr": "Aventure",
+        "de": "Abenteuer", "it": "Avventura", "ja": "アドベンチャー", "zh": "冒险",
+        "ru": "Приключения", "ar": "مغامرة", "hi": "साहसिक", "ko": "모험",
+    },
+    "Animation": {
+        "pt": "Animação", "en": "Animation", "es": "Animación", "fr": "Animation",
+        "de": "Animation", "it": "Animazione", "ja": "アニメーション", "zh": "动画",
+        "ru": "Мультфильм", "ar": "رسوم متحركة", "hi": "एनीमेशन", "ko": "애니메이션",
+    },
+    "Biography": {
+        "pt": "Biografia", "en": "Biography", "es": "Biografía", "fr": "Biographie",
+        "de": "Biografie", "it": "Biografia", "ja": "伝記", "zh": "传记",
+        "ru": "Биография", "ar": "سيرة ذاتية", "hi": "जीवनी", "ko": "전기",
+    },
+    "Comedy": {
+        "pt": "Comédia", "en": "Comedy", "es": "Comedia", "fr": "Comédie",
+        "de": "Komödie", "it": "Commedia", "ja": "コメディ", "zh": "喜剧",
+        "ru": "Комедия", "ar": "كوميديا", "hi": "कॉमेडी", "ko": "코미디",
+    },
+    "Crime": {
+        "pt": "Crime", "en": "Crime", "es": "Crimen", "fr": "Crime",
+        "de": "Krimi", "it": "Crime", "ja": "犯罪", "zh": "犯罪",
+        "ru": "Криминал", "ar": "جريمة", "hi": "अपराध", "ko": "범죄",
+    },
+    "Documentary": {
+        "pt": "Documentário", "en": "Documentary", "es": "Documental", "fr": "Documentaire",
+        "de": "Dokumentation", "it": "Documentario", "ja": "ドキュメンタリー", "zh": "纪录片",
+        "ru": "Документальный", "ar": "وثائقي", "hi": "डॉक्यूमेंट्री", "ko": "다큐멘터리",
+    },
+    "Drama": {
+        "pt": "Drama", "en": "Drama", "es": "Drama", "fr": "Drame",
+        "de": "Drama", "it": "Dramma", "ja": "ドラマ", "zh": "剧情",
+        "ru": "Драма", "ar": "دراما", "hi": "नाटक", "ko": "드라마",
+    },
+    "Family": {
+        "pt": "Família", "en": "Family", "es": "Familia", "fr": "Familial",
+        "de": "Familie", "it": "Famiglia", "ja": "ファミリー", "zh": "家庭",
+        "ru": "Семейный", "ar": "عائلي", "hi": "परिवार", "ko": "가족",
+    },
+    "Fantasy": {
+        "pt": "Fantasia", "en": "Fantasy", "es": "Fantasía", "fr": "Fantastique",
+        "de": "Fantasy", "it": "Fantasy", "ja": "ファンタジー", "zh": "奇幻",
+        "ru": "Фэнтези", "ar": "فانتازيا", "hi": "काल्पनिक", "ko": "판타지",
+    },
+    "History": {
+        "pt": "História", "en": "History", "es": "Historia", "fr": "Histoire",
+        "de": "Geschichte", "it": "Storia", "ja": "歴史", "zh": "历史",
+        "ru": "История", "ar": "تاريخ", "hi": "इतिहास", "ko": "역사",
+    },
+    "Horror": {
+        "pt": "Terror", "en": "Horror", "es": "Terror", "fr": "Horreur",
+        "de": "Horror", "it": "Horror", "ja": "ホラー", "zh": "恐怖",
+        "ru": "Ужасы", "ar": "رعب", "hi": "हॉरर", "ko": "공포",
+    },
+    "Mystery": {
+        "pt": "Mistério", "en": "Mystery", "es": "Misterio", "fr": "Mystère",
+        "de": "Mystery", "it": "Mistero", "ja": "ミステリー", "zh": "悬疑",
+        "ru": "Детектив", "ar": "غموض", "hi": "रहस्य", "ko": "미스터리",
+    },
+    "Romance": {
+        "pt": "Romance", "en": "Romance", "es": "Romance", "fr": "Romance",
+        "de": "Liebesfilm", "it": "Romantico", "ja": "ロマンス", "zh": "爱情",
+        "ru": "Мелодрама", "ar": "رومانسية", "hi": "रोमांस", "ko": "로맨스",
+    },
+    "Sci-Fi": {
+        "pt": "Ficção científica", "en": "Sci-Fi", "es": "Ciencia ficción", "fr": "Science-fiction",
+        "de": "Science-Fiction", "it": "Fantascienza", "ja": "SF", "zh": "科幻",
+        "ru": "Фантастика", "ar": "خيال علمي", "hi": "साइंस फिक्शन", "ko": "공상 과학",
+    },
+    "Sport": {
+        "pt": "Esporte", "en": "Sport", "es": "Deporte", "fr": "Sport",
+        "de": "Sport", "it": "Sport", "ja": "スポーツ", "zh": "运动",
+        "ru": "Спорт", "ar": "رياضة", "hi": "खेल", "ko": "스포츠",
+    },
+    "Thriller": {
+        "pt": "Suspense", "en": "Thriller", "es": "Suspense", "fr": "Thriller",
+        "de": "Thriller", "it": "Thriller", "ja": "スリラー", "zh": "惊悚",
+        "ru": "Триллер", "ar": "إثارة", "hi": "थ्रिलर", "ko": "스릴러",
+    },
+    "War": {
+        "pt": "Guerra", "en": "War", "es": "Bélica", "fr": "Guerre",
+        "de": "Kriegsfilm", "it": "Guerra", "ja": "戦争", "zh": "战争",
+        "ru": "Военный", "ar": "حرب", "hi": "युद्ध", "ko": "전쟁",
+    },
+    "Western": {
+        "pt": "Faroeste", "en": "Western", "es": "Western", "fr": "Western",
+        "de": "Western", "it": "Western", "ja": "西部劇", "zh": "西部",
+        "ru": "Вестерн", "ar": "غرب أمريكي", "hi": "पश्चिमी", "ko": "서부",
+    },
+}
+
+func TranslateGenre(genre, lang string) string {
+    if translations, ok := genreTranslations[genre]; ok {
+        if translated, exists := translations[lang]; exists {
+            return translated
+        }
+    }
+    // fallback: retorna o próprio gênero (inglês)
+    return genre
 }
