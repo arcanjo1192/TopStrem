@@ -18,7 +18,7 @@ import (
 type CatalogDataResponse struct {
     Type  string                `json:"type"`
     ID    string                `json:"id"`
-    Metas []models.CatalogMeta `json:"metas"`
+    Metas []models.CatalogMeta  `json:"metas"`
 }
 
 // getUniqueGenres coleta gêneros únicos dos metas (fallback)

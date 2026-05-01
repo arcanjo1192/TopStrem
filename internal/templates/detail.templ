@@ -128,12 +128,24 @@ templ DetailPage(meta models.Meta, lang string) {
 					</div>
                 </div>
                 <div class="detail-info">
-                    <h1>{ meta.Name } <span>({ meta.Year })</span></h1>
-                    <div class="detail-meta">
-                        <span>{ meta.Runtime }</span> |
-                        <span>{ strings.Join(meta.Genre, ", ") }</span> |
-                        <span>⭐ { meta.ImdbRating }</span>
-                    </div>
+                    <h1>{ meta.Name } <span>({ strings.TrimRight(meta.Year, "–-") })</span></h1>
+					<div class="detail-meta">
+						if meta.Runtime != "" {
+							<span>{ meta.Runtime }</span>
+							if len(meta.Genre) > 0 || meta.ImdbRating != "" {
+								<span>|</span>
+							}
+						}
+						if len(meta.Genre) > 0 {
+							<span>{ strings.Join(meta.Genre, ", ") }</span>
+							if meta.ImdbRating != "" {
+								<span>|</span>
+							}
+						}
+						if meta.ImdbRating != "" {
+							<span>⭐ { meta.ImdbRating }</span>
+						}
+					</div>
                     <p class="detail-description">{ meta.Description }</p>
                     <div class="detail-cast">
                         <strong>{ GetCastLabel(lang) }</strong> { strings.Join(meta.Cast, ", ") }

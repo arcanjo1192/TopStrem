@@ -47,12 +47,14 @@ func FavoritesHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
             }
             // Converte Meta para CatalogMeta
             catalogMeta := models.CatalogMeta{
-                ID:     meta.ID,
-                Type:   meta.Type,
-                Name:   meta.Name,
-                Year:   meta.Year,
-                Poster: meta.Poster,
-                Genre:  meta.Genre,
+                ID:     	meta.ID,
+                Type:   	meta.Type,
+                Name:   	meta.Name,
+                Year:   	meta.Year,
+                ImdbRating: meta.ImdbRating,
+                Runtime: 	meta.Runtime,
+                Poster: 	meta.Poster,
+                Genre:  	meta.Genre,
             }
             metas = append(metas, catalogMeta)
         }

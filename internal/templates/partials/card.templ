@@ -2,6 +2,7 @@ package partials
 
 import (
     "strconv"
+	"strings"
     "topstrem/internal/models"
 )
 
@@ -10,11 +11,21 @@ templ MovieCard(meta models.CatalogMeta, rank int) {
         <a href={ templ.SafeURL("/detail/" + meta.Type + "/" + meta.ID) } class="movie-card-link">
             <img src={ meta.Poster } alt={ meta.Name } fetchpriority="high">
 			<div class="card-info">
+				<div class="detail-meta">
+					if meta.Runtime != "" && meta.ImdbRating != "" {
+						<span>{ meta.Runtime }</span> |
+						<span>⭐ { meta.ImdbRating }</span>
+					} else if meta.Runtime != "" {
+						<span>{ meta.Runtime }</span>
+					} else if meta.ImdbRating != "" {
+						<span>⭐ { meta.ImdbRating }</span>
+					}
+				</div>
 				<div class="title-row">
 					<div class="rank-badge">#{ strconv.Itoa(rank) }</div>
 					<h3>{ meta.Name }</h3>
 				</div>
-				<p>{ meta.Year }</p>
+				<p>{ strings.TrimRight(meta.Year, "–-") }</p>
 			</div>
         </a>
         <button class="watchlist-btn" 

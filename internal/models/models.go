@@ -40,12 +40,14 @@ type CatalogResponse struct {
 
 // CatalogMeta contém informações resumidas para exibição em listas
 type CatalogMeta struct {
-    ID     string   `json:"id"`
-    Type   string   `json:"type"`
-    Name   string   `json:"name"`
-    Poster string   `json:"poster"`
-    Year   string   `json:"year"`
-    Genre  []string `json:"genre"`
+    ID     	   string   `json:"id"`
+    Type   	   string   `json:"type"`
+    Name   	   string   `json:"name"`
+	ImdbRating string   `json:"imdbRating"`
+	Runtime    string   `json:"runtime"`
+    Poster 	   string   `json:"poster"`
+    Year   	   string   `json:"year"`
+    Genre  	   []string `json:"genre"`
 }
 
 // Video representa um episódio

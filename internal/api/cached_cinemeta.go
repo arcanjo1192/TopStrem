@@ -80,5 +80,20 @@ func (c *CachedCinemetaClient) GetManifest() (*models.ManifestResponse, error) {
 }
 
 func (c *CachedCinemetaClient) GetCatalogWithFilters(catalogType, catalogID, extraArgs string) (*models.CatalogResponse, error) {
-    return c.client.GetCatalogWithFilters(catalogType, catalogID, extraArgs)
+    ctx := context.Background()
+    key := fmt.Sprintf("cinemeta:catalog:%s:%s:%s", catalogType, catalogID, extraArgs)
+
+    var result models.CatalogResponse
+    if err := c.cache.Get(ctx, key, &result); err == nil {
+        return &result, nil
+    }
+
+    data, err := c.client.GetCatalogWithFilters(catalogType, catalogID, extraArgs)
+    if err != nil {
+        return nil, err
+    }
+
+    // Cache por 1 hora (mesma duração do catálogo sem filtro)
+    c.cache.Set(ctx, key, data, time.Hour)
+    return data, nil
 }

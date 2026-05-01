@@ -457,6 +457,10 @@ main {
     margin-top: 0.25rem;
 }
 
+.movie-card .detail-meta {
+    white-space: nowrap;
+}
+
 .watchlist-btn {
     display: none;
 }
@@ -550,7 +554,7 @@ main {
 .detail-meta {
     font-size: 1rem;
     color: #ddd;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -1231,6 +1235,11 @@ main {
     }
     .detail-meta {
         justify-content: center;
+    }
+    .movie-card .detail-meta {
+        font-size: 0.72rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .episodes-sidebar {
         width: 100%;
