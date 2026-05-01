@@ -23,7 +23,6 @@ templ DetailPage(meta models.Meta, lang string) {
         <link rel="alternate" href={ templ.SafeURL("https://www.topstrem.com.br/detail/" + meta.Type + "/" + meta.ID + "?lang=en") } hreflang="en">
         <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <noscript><link rel="stylesheet" href="/static/style.css"></noscript>
-        <script src="/static/js/login.js"></script>
         <script src="/static/js/search.js"></script>
 		<script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
@@ -105,16 +104,18 @@ templ DetailPage(meta models.Meta, lang string) {
         <div id="detail-bg" class="detail-container" data-background={ meta.Background } style="background-color: #121212;">
             <div class="detail-overlay">
                 <div class="detail-poster">
-                    if meta.Logo != "" {
-                        <img src={ meta.Logo } alt={ meta.Name + " logo" } class="detail-logo" fetchpriority="low">
-                    }
-                    <img src={ meta.Poster } alt={ meta.Name } fetchpriority="high">
-                    if len(meta.Trailers) > 0 {
-                        <button class="trailer-button" data-trailer-url={ "https://www.youtube.com/embed/" + meta.Trailers[0].Source }>
-                            🎬 { GetTrailerButtonText(lang) }
-                        </button>
-                    }
-					<div class="watchlist-detail-btn">
+					<div class="detail-logo">
+						if meta.Logo != "" {
+							<img src={ meta.Logo } alt={ meta.Name + " logo" } class="detail-logo" fetchpriority="low">
+						}
+					</div>
+					<div class="detail-poster-img">
+						<img src={ meta.Poster } alt={ meta.Name } fetchpriority="high">
+						if len(meta.Trailers) > 0 {
+							<button class="trailer-button" data-trailer-url={ "https://www.youtube.com/embed/" + meta.Trailers[0].Source }>
+								🎬 { GetTrailerButtonText(lang) }
+							</button>
+						}
 						<button class="watchlist-btn" 
 								data-id={ meta.ID } 
 								data-type={ meta.Type } 
