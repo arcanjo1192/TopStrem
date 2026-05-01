@@ -2,6 +2,7 @@ package handlers
 
 import (
     "net/http"
+    "net/url"
     "strings"
 
     "github.com/gin-gonic/gin"
@@ -22,26 +23,22 @@ func SearchHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
             return
         }
 
-        lowerQuery := strings.ToLower(query)
         results := make([]models.CatalogMeta, 0)
-        hadCatalogError := false
+        var hadError bool
 
-        // Buscar nos catálogos populares de filmes e séries
+        // Buscar diretamente na API do Cinemeta usando o parâmetro search=
         for _, catalogType := range []string{"movie", "series"} {
-            catalog, err := apiClient.GetCatalog(catalogType, "top")
+            extraArgs := "search=" + url.QueryEscape(query)
+            catalog, err := apiClient.GetCatalogWithFilters(catalogType, "top", extraArgs)
             if err != nil {
-                hadCatalogError = true
+                hadError = true
                 continue
             }
-            for _, meta := range catalog.Metas {
-                if strings.Contains(strings.ToLower(meta.Name), lowerQuery) {
-                    results = append(results, meta)
-                }
-            }
+            results = append(results, catalog.Metas...)
         }
 
         if len(results) == 0 {
-            if hadCatalogError {
+            if hadError {
                 c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Cinemeta search indisponível"})
                 return
             }
