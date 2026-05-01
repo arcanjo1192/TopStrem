@@ -63,3 +63,20 @@ type SeasonGroup struct {
     SeasonNumber int     `json:"season"`
     Episodes     []Video `json:"episodes"`
 }
+
+// ManifestResponse representa a resposta do manifest
+type ManifestResponse struct {
+    ID          string                 `json:"id"`
+    Version     string                 `json:"version"`
+    Name        string                 `json:"name"`
+    Description string                 `json:"description"`
+    Catalogs    []ManifestCatalog      `json:"catalogs"`
+}
+
+// ManifestCatalog representa um catálogo no manifest
+type ManifestCatalog struct {
+    Type  string `json:"type"`
+    ID    string `json:"id"`
+    Name  string `json:"name"`
+    Extra map[string]interface{} `json:"extra,omitempty"`
+}

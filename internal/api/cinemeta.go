@@ -54,3 +54,23 @@ func (c *Client) GetMeta(mediaType, id string) (*models.Meta, error) {
     }
     return &metaResp.Meta, nil
 }
+
+// GetManifest busca o manifest do addon
+func (c *Client) GetManifest() (*models.ManifestResponse, error) {
+    url := fmt.Sprintf("%s/manifest.json", baseURL)
+    resp, err := c.httpClient.Get(url)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+    }
+
+    var manifest models.ManifestResponse
+    if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+        return nil, err
+    }
+    return &manifest, nil
+}

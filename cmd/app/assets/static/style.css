@@ -334,14 +334,48 @@ nav a:hover {
    ============================================ */
 main {
     max-width: 1400px;
-    margin: 2rem auto;
+    margin: 1rem auto;
     padding: 0 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.catalog-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(26, 26, 26, 0.9);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    align-self: flex-end; /* alinha à direita */
+}
+
+.catalog-filter span {
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.catalog-filter select {
+    background-color: #2c2c2c;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 0.3rem;
+    font-size: 0.8rem;
+}
+
+.catalog-filter select:focus {
+    outline: none;
+    border-color: #e50914;
 }
 
 .catalog-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 1.5rem;
+    position: relative;
 }
 
 .movie-card {
@@ -1207,6 +1241,10 @@ main {
     main {
         padding: 0 1rem;
     }
+	.catalog-filter {
+		align-self: stretch; /* ocupa toda a largura */
+		justify-content: center;
+	}
     .catalog-grid {
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 1rem;

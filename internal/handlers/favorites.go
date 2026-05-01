@@ -24,7 +24,7 @@ func FavoritesHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
         }
         if idsParam == "" {
             // Sem IDs, exibe grade vazia
-            templates.CatalogPage([]models.CatalogMeta{}, catalogType, "favorites", lang).Render(c.Request.Context(), c.Writer)
+            templates.CatalogPage([]models.CatalogMeta{}, catalogType, "favorites", "", []string{}, lang).Render(c.Request.Context(), c.Writer)
             return
         }
 
@@ -58,7 +58,7 @@ func FavoritesHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
         }
 
         // Renderiza a página com os favoritos
-        templates.CatalogPage(metas, catalogType, "favorites", lang).Render(c.Request.Context(), c.Writer)
+        templates.CatalogPage(metas, catalogType, "favorites", "", []string{}, lang).Render(c.Request.Context(), c.Writer)
     }
 }
 

@@ -59,3 +59,21 @@ func (c *CachedCinemetaClient) GetMeta(mediaType, id string) (*models.Meta, erro
     c.cache.Set(ctx, key, data, 6*time.Hour)  
     return data, nil  
 }
+
+func (c *CachedCinemetaClient) GetManifest() (*models.ManifestResponse, error) {
+    ctx := context.Background()
+    key := "cinemeta:manifest"
+
+    var result models.ManifestResponse
+    if err := c.cache.Get(ctx, key, &result); err == nil {
+        return &result, nil
+    }
+
+    data, err := c.client.GetManifest()
+    if err != nil {
+        return nil, err
+    }
+
+    c.cache.Set(ctx, key, data, 24*time.Hour)
+    return data, nil
+}

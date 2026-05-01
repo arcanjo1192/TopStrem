@@ -2,6 +2,7 @@ package handlers
 
 import (
     "net/http"
+    "sort"
     "strings"
 
     "github.com/gin-gonic/gin"
@@ -22,6 +23,37 @@ type CatalogDataResponse struct {
 // Isso reutiliza a mesma lógica para HTML e JSON
 func getCatalogData(apiClient api.CinemetaClient, catalogType, catalogID string) (*models.CatalogResponse, error) {
     return apiClient.GetCatalog(catalogType, catalogID)
+}
+
+// getUniqueGenres coleta gêneros únicos dos metas
+func getUniqueGenres(metas []models.CatalogMeta) []string {
+    genreSet := make(map[string]bool)
+    for _, meta := range metas {
+        for _, genre := range meta.Genre {
+            genreSet[genre] = true
+        }
+    }
+    var genres []string
+    for genre := range genreSet {
+        genres = append(genres, genre)
+    }
+    // Sort for consistency
+    sort.Strings(genres)
+    return genres
+}
+
+// filterMetasByGenre filtra metas por gênero
+func filterMetasByGenre(metas []models.CatalogMeta, genre string) []models.CatalogMeta {
+    var filtered []models.CatalogMeta
+    for _, meta := range metas {
+        for _, g := range meta.Genre {
+            if g == genre {
+                filtered = append(filtered, meta)
+                break
+            }
+        }
+    }
+    return filtered
 }
 
 func CatalogHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
@@ -52,18 +84,30 @@ func CatalogHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
             return
         }
 
+        // Filtrar por categoria se fornecida
+        category := c.Query("category")
+        var filteredMetas []models.CatalogMeta
+        if category != "" {
+            filteredMetas = filterMetasByGenre(catalog.Metas, category)
+        } else {
+            filteredMetas = catalog.Metas
+        }
+
+        // Coletar gêneros únicos para o filtro
+        genres := getUniqueGenres(catalog.Metas)
+
         // Negociar formato de resposta
         if IsJSONRequest(c.Request) {
             // Retornar JSON para aplicativos mobile/frontend
             c.JSON(http.StatusOK, CatalogDataResponse{
                 Type:  catalogType,
                 ID:    catalogID,
-                Metas: catalog.Metas,
+                Metas: filteredMetas,
             })
             return
         }
 
         // Retornar HTML (template) para web
-        templates.CatalogPage(catalog.Metas, catalogType, catalogID, lang).Render(c.Request.Context(), c.Writer)
+        templates.CatalogPage(filteredMetas, catalogType, catalogID, category, genres, lang).Render(c.Request.Context(), c.Writer)
     }
 }

@@ -5,7 +5,7 @@ import (
     "topstrem/internal/templates/partials"
 )
 
-templ CatalogPage(metas []models.CatalogMeta, catalogType string, catalogID string, lang string) {
+templ CatalogPage(metas []models.CatalogMeta, catalogType string, catalogID string, selectedCategory string, genres []string, lang string) {
     <!DOCTYPE html>
     <html lang={ lang }>
     <head>
@@ -96,6 +96,15 @@ templ CatalogPage(metas []models.CatalogMeta, catalogType string, catalogID stri
 		</header>
         <div id="search-results" class="search-results" style="display:none;"></div>
         <main>
+			<div class="catalog-filter">
+				<span>Categoria</span>
+				<select id="category-select" onchange="filterByCategory()">
+					<option value="">Todas</option>
+					for _, genre := range genres {
+						<option value={ genre } selected?={ genre == selectedCategory }>{ genre }</option>
+					}
+				</select>
+			</div>
 			<div id="catalog-grid" class="catalog-grid">
 				for idx, meta := range metas {
 					@partials.MovieCard(meta, idx+1)
@@ -112,6 +121,19 @@ templ CatalogPage(metas []models.CatalogMeta, catalogType string, catalogID stri
 				</div>
 			</aside>
         </main>
+		<script>
+			function filterByCategory() {
+				const select = document.getElementById('category-select');
+				const category = select.value;
+				const url = new URL(window.location);
+				if (category) {
+					url.searchParams.set('category', category);
+				} else {
+					url.searchParams.delete('category');
+				}
+				window.location.href = url.toString();
+			}
+		</script>
     </body>
     </html>
 }
