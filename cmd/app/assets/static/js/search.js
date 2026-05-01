@@ -53,31 +53,32 @@ function renderSearchResults(results, query) {
         return;
     }
 
-    const listItems = items.map(item => {
+    const cards = items.map(item => {
         const title = item.name || item.title || 'Sem título';
-        const year = item.year ? ` (${item.year})` : '';
-        const subtitle = item.type ? item.type.toUpperCase() : '';
-        
-        // Prioriza logo, depois poster. Se nenhum existir, usa placeholder
-        const imageUrl = item.logo || item.poster || '';
-        const logoHtml = imageUrl 
-            ? `<div class="search-result-logo-wrap"><img class="search-result-logo" src="${imageUrl}" alt="${escapeHtml(title)}" loading="lazy"/></div>`
-            : `<div class="search-result-logo-wrap"><div class="search-result-placeholder">🎬</div></div>`;
+        const year = item.year || '';
+        const type = item.type ? item.type.toUpperCase() : '';
+        // Usa poster (formato retrato) em vez de logo horizontal
+        const posterUrl = item.poster || '';
+        const placeholder = posterUrl
+            ? `<img src="${posterUrl}" alt="${escapeHtml(title)}" loading="lazy" />`
+            : `<div style="aspect-ratio:2/3; background:#1a1a1a; display:flex; align-items:center; justify-content:center; color:#555; font-size:2rem;">🎬</div>`;
 
         return `
-            <a class="search-result-item" href="/detail/${item.type}/${item.id}">
-                ${logoHtml}
-                <div class="search-result-meta">
-                    <span class="title">${escapeHtml(title)}${year}</span>
-                    <span class="meta">${escapeHtml(subtitle)}</span>
-                </div>
-            </a>
+            <div class="movie-card search-card">
+                <a href="/detail/${item.type}/${item.id}">
+                    ${placeholder}
+                    <div class="card-info">
+                        <h3>${escapeHtml(title)}</h3>
+                        <p>${year} ${type}</p>
+                    </div>
+                </a>
+            </div>
         `;
     }).join('');
 
     searchResults.innerHTML = `
         <div class="search-results-header">Resultados para "${escapeHtml(query)}"</div>
-        <div class="search-results-list">${listItems}</div>
+        <div class="catalog-grid search-results-grid">${cards}</div>
     `;
     searchResults.style.display = 'block';
     searchResults.classList.add('active');
