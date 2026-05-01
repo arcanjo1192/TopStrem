@@ -29,7 +29,11 @@ func SitemapHandler(apiClient api.CinemetaClient) gin.HandlerFunc {
         var urls []URL
 
         // Add static pages
-        baseURL := "https://www.topstrem.com.br"
+        scheme := "http"
+        if c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https" {
+            scheme = "https"
+        }
+        baseURL := scheme + "://" + c.Request.Host
         urls = append(urls, URL{
             Loc:        baseURL + "/",
             ChangeFreq: "daily",

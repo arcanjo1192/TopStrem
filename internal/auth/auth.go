@@ -29,8 +29,6 @@ type AuthConfig struct {
     GoogleClientSecret string
     CookieSecure       bool
     JWTSecret          []byte
-    RedirectURL        string
-    OAuth2Config       *oauth2.Config
 }
 
 var authConfig AuthConfig
@@ -55,16 +53,8 @@ func InitAuth(clientID, clientSecret, redirectURL string) {
     authConfig = AuthConfig{
         GoogleClientID:     clientID,
         GoogleClientSecret: clientSecret,
-        RedirectURL:        redirectURL,
         CookieSecure:       os.Getenv("ENVIRONMENT") == "production",
         JWTSecret:          []byte(jwtSecret),
-        OAuth2Config: &oauth2.Config{
-            ClientID:     clientID,
-            ClientSecret: clientSecret,
-            RedirectURL:  redirectURL,
-            Scopes:       []string{"openid", "profile", "email"},
-            Endpoint:     google.Endpoint,
-        },
     }
 }
 
@@ -89,8 +79,24 @@ func detectClientType(r *http.Request) ClientType {
     return ClientTypeWebBrowser
 }
 
+func getRedirectURL(c *gin.Context) string {
+    scheme := "http"
+    if c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https" {
+        scheme = "https"
+    }
+    return scheme + "://" + c.Request.Host + "/auth/callback"
+}
+
 func LoginHandler(c *gin.Context) {
-    url := authConfig.OAuth2Config.AuthCodeURL("random-state", oauth2.AccessTypeOffline)
+    redirectURL := getRedirectURL(c)
+    tempConfig := &oauth2.Config{
+        ClientID:     authConfig.GoogleClientID,
+        ClientSecret: authConfig.GoogleClientSecret,
+        RedirectURL:  redirectURL,
+        Scopes:       []string{"openid", "profile", "email"},
+        Endpoint:     google.Endpoint,
+    }
+    url := tempConfig.AuthCodeURL("random-state", oauth2.AccessTypeOffline)
     clientType := detectClientType(c.Request)
 
     switch clientType {
@@ -122,7 +128,16 @@ func CallbackHandler(c *gin.Context) {
         return
     }
     
-    token, err := authConfig.OAuth2Config.Exchange(context.Background(), code)
+    redirectURL := getRedirectURL(c)
+    tempConfig := &oauth2.Config{
+        ClientID:     authConfig.GoogleClientID,
+        ClientSecret: authConfig.GoogleClientSecret,
+        RedirectURL:  redirectURL,
+        Scopes:       []string{"openid", "profile", "email"},
+        Endpoint:     google.Endpoint,
+    }
+    
+    token, err := tempConfig.Exchange(context.Background(), code)
     if err != nil {
         c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Falha ao trocar o token"})
         return
