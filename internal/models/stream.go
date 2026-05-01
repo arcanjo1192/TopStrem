@@ -6,7 +6,7 @@ type StreamResponse struct {
 
 type Stream struct {
     Name        string `json:"name"`
-    ExternalUrl string `json:"externalUrl"`
+    ExternalURL string `json:"externalUrl"`
     AndroidUrl  string `json:"androidUrl"`
     IosUrl      string `json:"iosUrl"`
 }

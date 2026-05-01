@@ -7,6 +7,7 @@ import (
     "time"  
       
     "topstrem/internal/cache"  
+	"topstrem/internal/models"
 )  
   
 type CachedTMDBClient struct {  
@@ -112,4 +113,22 @@ func (c *CachedTMDBClient) GetTVSeriesByIMDB(imdbID string, lang string) (*TMDBT
         return nil, fmt.Errorf("ID %s não é uma série", imdbID)
     }
     return c.GetTVDetails(tmdbID, lang)
+}
+
+func (c *CachedTMDBClient) GetStreamsFromTMDB(imdbID string, mediaType string) ([]models.Stream, error) {
+    ctx := context.Background()
+    key := fmt.Sprintf("tmdb:streams:%s:%s", imdbID, mediaType)
+
+    var result []models.Stream
+    if err := c.cache.Get(ctx, key, &result); err == nil {
+        return result, nil
+    }
+
+    data, err := c.client.GetStreamsFromTMDB(imdbID, mediaType)
+    if err != nil {
+        return nil, err
+    }
+
+    c.cache.Set(ctx, key, data, 1*time.Hour)
+    return data, nil
 }

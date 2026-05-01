@@ -6,6 +6,8 @@ import (
     "net/http"
     "os"
     "time"
+	
+	"topstrem/internal/models"
 )
 
 type TMDBClient struct {
@@ -297,6 +299,58 @@ func (c *TMDBClient) GetTVWatchProviders(tmdbID int) (*TMDBWatchProvidersRespons
         return nil, err
     }
     return &providers, nil
+}
+
+// GetStreamsFromTMDB retorna lista de streams a partir do IMDb ID usando TMDB watch providers.
+func (c *TMDBClient) GetStreamsFromTMDB(imdbID string, mediaType string) ([]models.Stream, error) {
+    tmdbID, detectedType, err := c.FindByIMDBID(imdbID)
+    if err != nil {
+        return nil, err
+    }
+
+    // Usamos o tipo detectado para decidir qual endpoint
+    var providers *TMDBWatchProvidersResponse
+    if detectedType == "movie" {
+        providers, err = c.GetMovieWatchProviders(tmdbID)
+    } else if detectedType == "series" {
+        providers, err = c.GetTVWatchProviders(tmdbID)
+    } else {
+        return nil, fmt.Errorf("tipo não suportado: %s", detectedType)
+    }
+    if err != nil {
+        return nil, err
+    }
+
+    // País preferencial: Brasil; fallback para EUA
+    country := "BR"
+    countryData, ok := providers.Results[country]
+    if !ok {
+        countryData, ok = providers.Results["US"]
+        if !ok {
+            return nil, fmt.Errorf("nenhum provedor encontrado para o país %s", country)
+        }
+    }
+
+    var streams []models.Stream
+    // Prioriza serviços por assinatura (flatrate)
+    for _, p := range countryData.Flatrate {
+        streams = append(streams, models.Stream{
+            Name:        p.ProviderName,
+            ExternalURL: countryData.Link,
+        })
+    }
+
+    // Se não houver flatrate, inclui opções de aluguel
+    if len(streams) == 0 && len(countryData.Rent) > 0 {
+        for _, p := range countryData.Rent {
+            streams = append(streams, models.Stream{
+                Name:        p.ProviderName + " (Alugar)",
+                ExternalURL: countryData.Link,
+            })
+        }
+    }
+
+    return streams, nil
 }
 
 // ==================== Auxiliares ====================

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "log"
     "net/http"
     "strings"
 
@@ -10,15 +11,12 @@ import (
     "topstrem/internal/templates"
 )
 
-// WatchDataResponse contém os dados brutos de streams para JSON
 type WatchDataResponse struct {
-    MediaType string            `json:"mediaType"`
-    ID        string            `json:"id"`
-    Streams   []models.Stream   `json:"streams"`
+    MediaType string          `json:"mediaType"`
+    ID        string          `json:"id"`
+    Streams   []models.Stream `json:"streams"`
 }
 
-// getWatchData extrai os dados brutos de streams
-// Isso reutiliza a mesma lógica para HTML e JSON
 func getWatchData(watchClient api.WatchHubClientInterface, mediaType, id string) ([]models.Stream, error) {
     response, err := watchClient.GetStreams(mediaType, id)
     if err != nil {
@@ -30,7 +28,7 @@ func getWatchData(watchClient api.WatchHubClientInterface, mediaType, id string)
     return response.Streams, nil
 }
 
-func WatchHandler(watchClient api.WatchHubClientInterface) gin.HandlerFunc {
+func WatchHandler(watchClient api.WatchHubClientInterface, tmdbClient api.TMDBClientInterface) gin.HandlerFunc {
     return func(c *gin.Context) {
         pathParts := strings.Split(c.Request.URL.Path, "/")
         if len(pathParts) < 5 {
@@ -39,26 +37,31 @@ func WatchHandler(watchClient api.WatchHubClientInterface) gin.HandlerFunc {
         }
         mediaType := pathParts[3]
         id := pathParts[4]
-		
-		if mediaType != "movie" && mediaType != "series" {  
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tipo de mídia inválido"})
-			return  
-		}  
-		if id == "" {  
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID não fornecido"})
-			return  
-		}
 
-        // Obter dados (reutilizado para HTML e JSON)
-        streams, err := getWatchData(watchClient, mediaType, id)
-        if err != nil {
-            c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        if mediaType != "movie" && mediaType != "series" {
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tipo de mídia inválido"})
+            return
+        }
+        if id == "" {
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "ID não fornecido"})
             return
         }
 
-        // Negociar formato de resposta
+        streams, err := getWatchData(watchClient, mediaType, id)
+        if err != nil || len(streams) == 0 {
+            log.Printf("WatchHub vazio ou erro para %s/%s, tentando TMDB", mediaType, id)
+            tmdbStreams, tmdbErr := tmdbClient.GetStreamsFromTMDB(id, mediaType)
+            if tmdbErr == nil {
+                streams = tmdbStreams
+            } else {
+                log.Printf("TMDB também falhou: %v", tmdbErr)
+            }
+        }
+        if streams == nil {
+            streams = []models.Stream{}
+        }
+
         if IsJSONRequest(c.Request) {
-            // Retornar JSON para aplicativos mobile/frontend
             c.JSON(http.StatusOK, WatchDataResponse{
                 MediaType: mediaType,
                 ID:        id,
@@ -67,7 +70,6 @@ func WatchHandler(watchClient api.WatchHubClientInterface) gin.HandlerFunc {
             return
         }
 
-        // Retornar HTML (template) para web
         templates.WatchPage(streams, mediaType, id).Render(c.Request.Context(), c.Writer)
     }
 }

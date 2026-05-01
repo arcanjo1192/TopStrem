@@ -457,7 +457,7 @@ main {
     margin-top: 0.25rem;
 }
 
-.watchlist-btn, .watchlist-detail-btn {
+.watchlist-btn {
     display: none;
 }
 
@@ -476,6 +476,27 @@ main {
     color: rgba(255, 255, 255, 0.8);
     transition: color 0.2s, transform 0.1s;
     z-index: 2;
+}
+
+.watchlist-detail-btn {
+    position: absolute;
+    top: 130px;           
+    left: 10px;        
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.2s, transform 0.1s;
+    z-index: 2;
+}
+
+.watchlist-detail-btn:hover {
+    transform: scale(1.05);
 }
 
 .watchlist-btn svg {
@@ -522,6 +543,7 @@ main {
 
 .detail-poster {
     flex: 0 0 300px;
+	position: relative;
 }
 
 .detail-poster img {
@@ -576,30 +598,6 @@ main {
 .detail-cast strong, .detail-director strong, .detail-country strong, .detail-awards strong {
     color: #e50914;
     margin-right: 0.5rem;
-}
-
-.watchlist-detail-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #aaa;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
-    margin-top: 1rem;
-    transition: color 0.2s;
-}
-.watchlist-detail-btn svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
-}
-.watchlist-detail-btn.saved {
-    color: #ffc107;
-}
-.watchlist-detail-btn:hover {
-    color: #ffc107;
 }
 
 /* ============================================
@@ -1034,35 +1032,6 @@ main {
 }
 
 .favorites-btn:hover {
-    color: #e50914;
-}
-
-/* ============================================
-   BOTÃO DE WATCHLIST (FAVORITOS) NO HEADER
-   ============================================ */
-.watchlist-detail-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    transition: color 0.2s;
-    padding: 0;
-    margin: 0 0.4rem 0 0;
-}
-
-.watchlist-detail-btn svg {
-    width: 24px;
-    height: 24px;
-}
-
-.watchlist-detail-btn:hover {
-    color: #e50914;
-}
-
-.watchlist-detail-btn.favorited {
     color: #e50914;
 }
 

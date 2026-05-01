@@ -10,11 +10,12 @@ type CinemetaClient interface {
 }
 
 type TMDBClientInterface interface {
-	FindByIMDBID(imdbID string) (int, string, error) 
+    FindByIMDBID(imdbID string) (int, string, error)
     GetMovieDetails(tmdbID int, lang string) (*TMDBMovieDetails, error)
     GetTVDetails(tmdbID int, lang string) (*TMDBTVDetails, error)
-    GetTVSeriesByIMDB(imdbID string, lang string) (*TMDBTVDetails, error)   // novo
-    GetTVSeason(tmdbID int, seasonNumber int, lang string) (*TMDBSeasonDetails, error) // novo
+    GetTVSeriesByIMDB(imdbID string, lang string) (*TMDBTVDetails, error)
+    GetTVSeason(tmdbID int, seasonNumber int, lang string) (*TMDBSeasonDetails, error)
+    GetStreamsFromTMDB(imdbID string, mediaType string) ([]models.Stream, error) // novo
 }
 
 type WatchHubClientInterface interface {

@@ -128,7 +128,7 @@ func main() {
 
     // Endpoints de API com rate limit mais restrito
     r.GET("/api/episodes/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.EpisodesHandler(cachedApiClient, cachedTmdbClient))
-    r.GET("/api/watch/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchHandler(cachedWatchClient))
+    r.GET("/api/watch/*path", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchHandler(cachedWatchClient, cachedTmdbClient))
     r.GET("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.FavoritesAPIHandler(boltStore))
     r.POST("/api/favorites", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateFavoritesAPIHandler(boltStore))
     r.GET("/api/search", middleware.CORS(), apiRateLimiter.Middleware(), handlers.SearchHandler(cachedApiClient))
