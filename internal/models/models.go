@@ -75,8 +75,15 @@ type ManifestResponse struct {
 
 // ManifestCatalog representa um catálogo no manifest
 type ManifestCatalog struct {
-    Type  string `json:"type"`
-    ID    string `json:"id"`
-    Name  string `json:"name"`
-    Extra map[string]interface{} `json:"extra,omitempty"`
+    Type   string   `json:"type"`
+    ID     string   `json:"id"`
+    Name   string   `json:"name"`
+	Genres []string `json:"genres,omitempty"`
+    Extra  []ManifestExtra `json:"extra,omitempty"`
+}
+
+type ManifestExtra struct {
+    Name       string   `json:"name"`
+    Options    []string `json:"options,omitempty"`
+    IsRequired bool     `json:"isRequired,omitempty"`
 }

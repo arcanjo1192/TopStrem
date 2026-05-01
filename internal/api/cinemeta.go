@@ -74,3 +74,23 @@ func (c *Client) GetManifest() (*models.ManifestResponse, error) {
     }
     return &manifest, nil
 }
+
+func (c *Client) GetCatalogWithFilters(catalogType, catalogID, extraArgs string) (*models.CatalogResponse, error) {
+    var urlStr string
+    if extraArgs != "" {
+        urlStr = fmt.Sprintf("%s/catalog/%s/%s/%s.json", baseURL, catalogType, catalogID, extraArgs)
+    } else {
+        urlStr = fmt.Sprintf("%s/catalog/%s/%s.json", baseURL, catalogType, catalogID)
+    }
+    resp, err := c.httpClient.Get(urlStr)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    var catalog models.CatalogResponse
+    if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
+        return nil, err
+    }
+    return &catalog, nil
+}

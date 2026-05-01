@@ -4,6 +4,7 @@ import "topstrem/internal/models"
 
 type CinemetaClient interface {
     GetCatalog(catalogType, catalogID string) (*models.CatalogResponse, error)
+    GetCatalogWithFilters(catalogType, catalogID, extraArgs string) (*models.CatalogResponse, error)
     GetMeta(mediaType, id string) (*models.Meta, error)
     GetManifest() (*models.ManifestResponse, error)
 }

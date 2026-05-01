@@ -74,6 +74,11 @@ func (c *CachedCinemetaClient) GetManifest() (*models.ManifestResponse, error) {
         return nil, err
     }
 
+    // Cache por 24 horas (manifest raramente muda)
     c.cache.Set(ctx, key, data, 24*time.Hour)
     return data, nil
+}
+
+func (c *CachedCinemetaClient) GetCatalogWithFilters(catalogType, catalogID, extraArgs string) (*models.CatalogResponse, error) {
+    return c.client.GetCatalogWithFilters(catalogType, catalogID, extraArgs)
 }
