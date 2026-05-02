@@ -64,8 +64,8 @@ func startServer(dataDir, assetsDir, secretsJSON string) {
     }
 
     // ---- Rate limiters ----
-    rateLimiter := middleware.NewRateLimiter(30, time.Minute)
-    apiRateLimiter := middleware.NewRateLimiter(20, time.Minute)
+	rateLimiter := middleware.NewRateLimiter(100, time.Minute)   // rotas gerais
+	apiRateLimiter := middleware.NewRateLimiter(60, time.Minute) // rotas de API
 
     // ---- Configuração do Gin ----
     gin.SetMode(gin.ReleaseMode)
