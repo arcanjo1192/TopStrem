@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "errors"
     "time"
+    "strings"
 
     bolt "go.etcd.io/bbolt"
 )
@@ -12,6 +13,7 @@ var (
     usersBucket        = []byte("users")
     favoritesBucket    = []byte("favorites")
     watchedBucket      = []byte("watched_episodes")
+	listsBucket 	   = []byte("lists")
 )
 
 type UserProfile struct {
@@ -25,6 +27,12 @@ type FavoriteItem struct {
     Type  string `json:"type"`
     Name  string `json:"name"`
     Year  string `json:"year"`
+}
+
+type ListInfo struct {
+    Name  string         `json:"name"`
+    Type  string         `json:"type"`
+    Items []FavoriteItem `json:"items"`
 }
 
 type Storage struct {
@@ -47,6 +55,9 @@ func Open(path string) (*Storage, error) {
         if _, err := tx.CreateBucketIfNotExists(watchedBucket); err != nil {
             return err
         }
+		if _, err := tx.CreateBucketIfNotExists(listsBucket); err != nil {
+			return err
+		}
         return nil
     })
     if err != nil {
@@ -234,4 +245,139 @@ func (s *Storage) RemoveWatchedEpisode(email string, episodeID string) error {
         }
     }
     return s.SaveWatchedEpisodes(email, filtered)
+}
+
+func (s *Storage) GetList(email, listName string) (*ListInfo, error) {
+    if email == "" || listName == "" {
+        return nil, errors.New("email and list name are required")
+    }
+    key := email + ":" + listName
+    var list ListInfo
+    err := s.db.View(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        data := bucket.Get([]byte(key))
+        if data == nil {
+            return errors.New("list not found")
+        }
+        return json.Unmarshal(data, &list)
+    })
+    if err != nil {
+        return nil, err
+    }
+    return &list, nil
+}
+
+func (s *Storage) GetAllLists(email string) ([]ListInfo, error) {
+    if email == "" {
+        return nil, errors.New("email is required")
+    }
+    var lists []ListInfo
+    err := s.db.View(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        cursor := bucket.Cursor()
+        prefix := []byte(email + ":")
+        for k, v := cursor.Seek(prefix); k != nil && strings.HasPrefix(string(k), string(prefix)); k, v = cursor.Next() {
+            var list ListInfo
+            if err := json.Unmarshal(v, &list); err != nil {
+                return err
+            }
+            lists = append(lists, list)
+        }
+        return nil
+    })
+    return lists, err
+}
+
+func (s *Storage) CreateList(email, listName, listType string) error {
+    if email == "" || listName == "" || listType == "" {
+        return errors.New("email, list name and type are required")
+    }
+    key := email + ":" + listName
+    return s.db.Update(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        if bucket.Get([]byte(key)) != nil {
+            return errors.New("list already exists")
+        }
+        list := ListInfo{
+            Name:  listName,
+            Type:  listType,
+            Items: []FavoriteItem{},
+        }
+        data, err := json.Marshal(list)
+        if err != nil {
+            return err
+        }
+        return bucket.Put([]byte(key), data)
+    })
+}
+
+func (s *Storage) DeleteList(email, listName string) error {
+    if email == "" || listName == "" {
+        return errors.New("email and list name are required")
+    }
+    key := email + ":" + listName
+    return s.db.Update(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        return bucket.Delete([]byte(key))
+    })
+}
+
+func (s *Storage) AddItemToList(email, listName string, item FavoriteItem) error {
+    if email == "" || listName == "" || item.ID == "" || item.Type == "" {
+        return errors.New("invalid parameters")
+    }
+    key := email + ":" + listName
+    return s.db.Update(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        data := bucket.Get([]byte(key))
+        if data == nil {
+            return errors.New("list not found")
+        }
+        var list ListInfo
+        if err := json.Unmarshal(data, &list); err != nil {
+            return err
+        }
+        // Verifica duplicata
+        for _, it := range list.Items {
+            if it.ID == item.ID {
+                return nil // já existe
+            }
+        }
+        list.Items = append(list.Items, item)
+        updated, err := json.Marshal(list)
+        if err != nil {
+            return err
+        }
+        return bucket.Put([]byte(key), updated)
+    })
+}
+
+func (s *Storage) RemoveItemFromList(email, listName, itemID string) error {
+    if email == "" || listName == "" || itemID == "" {
+        return errors.New("invalid parameters")
+    }
+    key := email + ":" + listName
+    return s.db.Update(func(tx *bolt.Tx) error {
+        bucket := tx.Bucket(listsBucket)
+        data := bucket.Get([]byte(key))
+        if data == nil {
+            return errors.New("list not found")
+        }
+        var list ListInfo
+        if err := json.Unmarshal(data, &list); err != nil {
+            return err
+        }
+        filtered := make([]FavoriteItem, 0, len(list.Items))
+        for _, it := range list.Items {
+            if it.ID != itemID {
+                filtered = append(filtered, it)
+            }
+        }
+        list.Items = filtered
+        updated, err := json.Marshal(list)
+        if err != nil {
+            return err
+        }
+        return bucket.Put([]byte(key), updated)
+    })
 }

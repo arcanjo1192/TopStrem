@@ -637,7 +637,9 @@ main {
 }
 
 .trailer-button {
-    display: inline-block;
+    display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
     margin-top: 0.75rem;
     padding: 6px 12px;
     background-color: #2a2a2a;
@@ -786,6 +788,9 @@ main {
    ============================================ */
 .episodes-button {
     position: fixed;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     bottom: 30px;
     right: 30px;
     background-color: #e50914;
@@ -1261,6 +1266,67 @@ main {
     .modal-content, .watchhub-modal-content {
         width: 95%;
     }
+
+    /* ───────── Responsivo – Modais de listas ───────── */
+    .list-selection-modal > .list-modal-content,
+    .list-selection-modal > .lists-popup {
+        width: 95vw;
+        max-width: 400px;
+        padding: 1.25rem;
+        border-radius: 10px;
+    }
+
+    .list-selection-modal h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .all-lists-item {
+        padding: 10px 12px;
+        margin-bottom: 8px;
+    }
+
+    .all-lists-item .list-name {
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+
+    .all-lists-item .list-meta {
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 0.8rem;
+    }
+
+    .all-lists-item .list-meta span {
+        white-space: normal;
+        flex: 1 1 auto;
+    }
+
+    .all-lists-item .delete-list-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        margin-left: auto;
+    }
+
+    .list-selection-modal li {
+        padding: 8px 12px;
+    }
+
+    .list-option {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    .delete-list-btn {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+
+    #new-list-btn {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+        margin-top: 4px;
+    }
 }
 
 /* ============================================
@@ -1279,4 +1345,235 @@ main {
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #ff0a1f;
+}
+
+/* ============================================
+   MODAIS DE LISTAS (backdrop + conteúdo)
+   ============================================ */
+.list-selection-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 2001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.list-modal-content {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 2rem;
+    min-width: 350px;
+    max-width: 90vw;
+    color: #fff;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.list-selection-modal h3 {
+    margin-top: 0;
+}
+
+.list-selection-modal ul {
+    list-style: none;
+    padding: 0;
+}
+
+/* Item da lista no modal "Todas as suas listas" */
+.all-lists-item {
+    background: #2a2a2a;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid #3a3a3a;
+}
+
+.all-lists-item:hover {
+    background: #3a3a3a;
+    border-color: #e50914;
+}
+
+.all-lists-item .list-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+    color: #fff;
+}
+
+.all-lists-item .list-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #aaa;
+}
+
+/* Botões comuns aos modais */
+.list-option,
+#new-list-btn {
+    background: #2a2a2a;
+    border: none;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+.list-option:hover,
+#new-list-btn:hover {
+    background: #3a3a3a;
+}
+
+.delete-list-btn {
+    background: #e50914;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+.delete-list-btn:hover {
+    background: #ff0a1f;
+}
+
+.delete-list-btn svg {
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+/* Arraste de cards */
+.movie-card.dragging {
+    opacity: 0.5;
+    border: 2px dashed #e50914;
+}
+
+/* Modal personalizado para alertas, confirmações e prompts */
+.custom-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-modal-content {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 2rem;
+    min-width: 300px;
+    max-width: 90vw;
+    color: #fff;
+    text-align: center;
+}
+
+.custom-modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+.custom-modal-message {
+    font-size: 0.95rem;
+    color: #ccc;
+    margin-bottom: 1.5rem;
+}
+
+.custom-modal-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.custom-modal-btn {
+    background: #2a2a2a;
+    border: none;
+    color: #fff;
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.custom-modal-btn:hover {
+    background: #3a3a3a;
+}
+
+.custom-modal-btn.primary {
+    background: #e50914;
+    color: white;
+}
+.custom-modal-btn.primary:hover {
+    background: #ff0a1f;
+}
+
+.custom-modal-input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+.custom-modal-input:focus {
+    outline: none;
+    border-color: #e50914;
+}
+
+/* Cabeçalho da lista */
+.list-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.list-header h2 {
+    font-size: 2rem;
+    color: #fff;
+    margin-bottom: 0.25rem;
+}
+.list-header .list-type {
+    font-size: 0.95rem;
+    color: #aaa;
+    background: rgba(255,255,255,0.1);
+    padding: 0.15rem 0.8rem;
+    border-radius: 20px;
+}
+
+/* Botão Remover da lista (dentro dos cards) */
+.remove-from-list-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: transparent;
+    border: 1px solid #e50914;
+    color: #e50914;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+.remove-from-list-btn:hover {
+    background: #e50914;
+    color: #fff;
 }

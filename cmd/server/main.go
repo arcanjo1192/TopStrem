@@ -16,6 +16,7 @@ import (
     "topstrem/internal/handlers"
     "topstrem/internal/middleware"
     "topstrem/internal/storage"
+	"topstrem/internal/crypto"
 )
 
 func main() {
@@ -134,6 +135,12 @@ func main() {
     r.GET("/api/search", middleware.CORS(), apiRateLimiter.Middleware(), handlers.SearchHandler(cachedApiClient))
     r.GET("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.WatchedEpisodesAPIHandler(boltStore))
     r.POST("/api/watched-episodes", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateWatchedEpisodesAPIHandler(boltStore))
+	r.GET("/api/share-token", middleware.CORS(), handlers.ShareTokenHandler())
+	
+	// Listas
+	r.GET("/lists", middleware.CORS(), rateLimiter.Middleware(), handlers.ListsHandler(apiClient, boltStore))   // visualização
+	r.GET("/api/lists", middleware.CORS(), apiRateLimiter.Middleware(), handlers.ListsAPIHandler(boltStore))   // listar listas
+	r.POST("/api/lists", middleware.CORS(), apiRateLimiter.Middleware(), handlers.UpdateListsAPIHandler(boltStore)) // criar/gerenciar
 
     // Autenticação
     r.GET("/auth/login", middleware.CORS(), rateLimiter.Middleware(), auth.LoginHandler)
@@ -162,8 +169,15 @@ func main() {
         os.Getenv("GOOGLE_CLIENT_SECRET"),
         redirectURL,
     )
+	
+    // ========== 8. CONFIGURAÇÃO DA CRIPTOGRAFIA ==========
+	if key := os.Getenv("LIST_SHARE_SECRET"); key != "" {
+		if err := crypto.Init(key); err != nil {
+			panic("Falha ao inicializar criptografia: " + err.Error())
+		}
+	}
 
-    // ========== 8. INICIALIZAÇÃO DO SERVIDOR ==========
+    // ========== 9. INICIALIZAÇÃO DO SERVIDOR ==========
     fmt.Println("Servidor rodando na porta 8080...")
     r.Run(":8080")
 }

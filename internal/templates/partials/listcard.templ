@@ -1,0 +1,55 @@
+package partials
+
+import (
+    "strconv"
+    "strings"
+    "topstrem/internal/models"
+)
+
+templ ListMovieCard(meta models.CatalogMeta, rank int, isOwner bool) {
+    <div class="movie-card" data-movie-id={ meta.ID }>
+        <a href={ templ.SafeURL("/detail/" + meta.Type + "/" + meta.ID) } class="movie-card-link">
+            <img src={ meta.Poster } alt={ meta.Name } fetchpriority="high">
+            <div class="card-info">
+                <div class="detail-meta">
+                    if meta.Runtime != "" && meta.ImdbRating != "" {
+                        <span>{ meta.Runtime }</span> |
+                        <span>⭐ { meta.ImdbRating }</span>
+                    } else if meta.Runtime != "" {
+                        <span>{ meta.Runtime }</span>
+                    } else if meta.ImdbRating != "" {
+                        <span>⭐ { meta.ImdbRating }</span>
+                    }
+                </div>
+                <div class="title-row">
+                    <div class="rank-badge">#{ strconv.Itoa(rank) }</div>
+                    <h3>{ meta.Name }</h3>
+                </div>
+                <p>{ strings.TrimRight(meta.Year, "–-") }</p>
+            </div>
+        </a>
+        <button class="watchlist-btn" 
+                data-id={ meta.ID } 
+                data-type={ meta.Type } 
+                data-name={ meta.Name } 
+                data-year={ meta.Year }>
+            <svg class="bookmark-icon" viewBox="0 0 384 512" fill="currentColor">
+                <path d="M0 48V487.7C0 501.1 10.9 512 24.3 512c5 0 9.9-1.5 14-4.4L192 400 345.7 507.6c4.1 2.9 9 4.4 14 4.4c13.4 0 24.3-10.9 24.3-24.3V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48z"/>
+            </svg>
+        </button>
+		if isOwner {
+			<button class="remove-from-list-btn" 
+					data-id={ meta.ID } 
+					data-type={ meta.Type } 
+					data-name={ meta.Name }>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="3 6 5 6 21 6"/>
+					<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+					<line x1="10" y1="11" x2="10" y2="17"/>
+					<line x1="14" y1="11" x2="14" y2="17"/>
+				</svg>
+				Remover da lista
+			</button>
+		}
+    </div>
+}

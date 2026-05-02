@@ -440,6 +440,20 @@ var translations = map[string]map[string]string{
 		"hi": "सभी",
 		"ko": "모두",
 	},
+	"My_List": {
+		"pt": "Minhas Listas",
+		"en": "My Lists",
+		"es": "Mis Listas",
+		"fr": "Mes Listes",
+		"de": "Meine Listen",
+		"it": "Le Mie Liste",
+		"ja": "マイリスト",
+		"zh": "我的列表",
+		"ru": "Мои списки",
+		"ar": "قوائمي",
+		"hi": "मेरी सूचियाँ",
+		"ko": "내 목록",
+	},
 }
 
 func getText(key, lang string) string {
@@ -586,6 +600,10 @@ func GetCategoryText(lang string) string {
 
 func GetAllText(lang string) string {
     return getText("All", lang)
+}
+
+func GetMyListText(lang string) string {
+    return getText("My_List", lang)
 }
 
 var genreTranslations = map[string]map[string]string{

@@ -100,6 +100,8 @@ function updateUserUI() {
     const notificationsBtn = document.getElementById('notifications-btn');
     const userNameSpan = document.getElementById('user-name-display');
     const userInitialSpan = document.getElementById('user-initial');
+	const myListsBtn = document.getElementById('my-lists-btn');
+	const addToListBtn = document.getElementById('add-to-list-btn');
 
     const isLoggedIn = currentUser.isLoggedIn;
     const isNativeApp = clientType.isNativeApp;
@@ -111,10 +113,13 @@ function updateUserUI() {
         if (userNameSpan) userNameSpan.textContent = currentUser.name;
         if (userInitialSpan) userInitialSpan.textContent = currentUser.name.charAt(0).toUpperCase();
         attachFavoritesListeners();
+		if (myListsBtn) myListsBtn.addEventListener('click', showAllListsModal);
+		if (addToListBtn) addToListBtn.style.display = 'inline-flex';
     } else {
         if (userDropdown) userDropdown.style.display = 'none';
         if (loginLink) loginLink.style.display = isNativeApp ? 'none' : 'inline-block';
         if (notificationsBtn) notificationsBtn.style.display = 'none';
+		if (addToListBtn) addToListBtn.style.display = 'none';
     }
 
     const watchlistBtns = document.querySelectorAll('.watchlist-btn, .watchlist-detail-btn');
